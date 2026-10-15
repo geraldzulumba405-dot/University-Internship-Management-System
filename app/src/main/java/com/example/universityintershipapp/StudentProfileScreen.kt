@@ -137,12 +137,14 @@ fun StudentProfileScreen(
                         Text(
                             "B.Sc. Computer Science & Software Engineering, Year 3",
                             fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             "🏛️ National University / Institute of Technology",
                             fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(16.dp))

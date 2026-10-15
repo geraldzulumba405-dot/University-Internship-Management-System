@@ -59,7 +59,7 @@ val SurfaceBackground = Color(0xFFF8F9FF)
 val CardBackground = Color(0xFFFFFFFF)
 val OutlineVariant = Color(0xFFE2E8F0)
 val TextPrimary = Color(0xFF0F172A)
-val TextSecondary = Color(0xFF64748B)
+val TextSecondary = Color(0xFF334155)
 val LightBlueContainer = Color(0xFFEFF6FF)
 
 @Composable

@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,7 +61,7 @@ fun StudentSearchScreen(
     onProfileNavClick: () -> Unit = {},
     onApplyClick: (String) -> Unit = {},
 ) {
-    var searchQuery by remember { mutableStateOf("Software Engineering") }
+    var searchQuery by remember { mutableStateOf("") }
     var selectedBottomNav by remember { mutableIntStateOf(1) }
 
     Box(
@@ -101,7 +103,8 @@ fun StudentSearchScreen(
                     Text(
                         text = "University Verified Roles",
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
                     )
                 }
 
@@ -131,6 +134,19 @@ fun StudentSearchScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0F172A)
+                    ),
+                    placeholder = {
+                        Text(
+                            text = "Search by role, company, or skills...",
+                            color = Color(0xFF475569),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     leadingIcon = {
                         SearchNavIcon(
                             modifier = Modifier.size(20.dp),
@@ -147,7 +163,7 @@ fun StudentSearchScreen(
                             ) {
                                 ClearCircleIcon(
                                     modifier = Modifier.size(20.dp),
-                                    tint = Color(0xFF94A3B8)
+                                    tint = Color(0xFF64748B)
                                 )
                             }
                         }
@@ -156,8 +172,10 @@ fun StudentSearchScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
                         focusedBorderColor = Color(0xFF0F2C59),
-                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        unfocusedBorderColor = Color(0xFF94A3B8),
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White
                     )
@@ -167,7 +185,9 @@ fun StudentSearchScreen(
 
                 // 3. Filter Chips Row
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -177,14 +197,14 @@ fun StudentSearchScreen(
                         color = Color(0xFF0F2C59)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FilterIcon(modifier = Modifier.size(16.dp), tint = Color.White)
+                            FilterIcon(modifier = Modifier.size(15.dp), tint = Color.White)
                             Text(
                                 text = "Filters",
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
@@ -196,7 +216,7 @@ fun StudentSearchScreen(
                             ) {
                                 Text(
                                     text = "3",
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF0F2C59)
                                 )
@@ -211,7 +231,7 @@ fun StudentSearchScreen(
                         border = BorderStroke(1.dp, Color(0xFF1E3A8A))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -221,32 +241,50 @@ fun StudentSearchScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1E3A8A)
                             )
-                            ClearIcon(modifier = Modifier.size(12.dp), tint = Color(0xFF1E3A8A))
+                            ClearIcon(modifier = Modifier.size(11.dp), tint = Color(0xFF1E3A8A))
                         }
                     }
 
-                    // Chip 3: Remote & Hybri...
+                    // Chip 3: Remote & Hybrid
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = Color(0xFFEFF6FF),
                         border = BorderStroke(1.dp, Color(0xFFBFDBFE))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            SignalIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF0F766E))
+                            SignalIcon(modifier = Modifier.size(13.dp), tint = Color(0xFF0F766E))
                             Text(
-                                text = "Remote & Hybri...",
+                                text = "Remote & Hybrid",
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1E3A8A)
                             )
                         }
                     }
-                }
 
+                    // Chip 4: Paid Only
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = Color(0xFFCCFBF1),
+                        border = BorderStroke(1.dp, Color(0xFF99F6E4))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Paid Only",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F766E)
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(18.dp))
 
                 // 4. Results Header Row
@@ -446,7 +484,8 @@ fun SearchResultCard(
                     Text(
                         text = "$company • $location",
                         fontSize = 13.sp,
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
                     )
                 }
 
@@ -511,7 +550,8 @@ fun SearchResultCard(
                     Text(
                         text = "Deadline: ",
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
                     )
                     Text(
                         text = deadline,

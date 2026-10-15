@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -126,7 +127,8 @@ fun StudentHomeScreen(
                     Text(
                         text = "Welcome back, $studentName!",
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
                     )
                 }
 
@@ -178,11 +180,17 @@ fun StudentHomeScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF0F172A)
+                        ),
                         placeholder = {
                             Text(
-                                text = "Search internships by role, compan...",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 13.sp
+                                text = "Search internships by role, company...",
+                                color = Color(0xFF64748B),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Normal
                             )
                         },
                         leadingIcon = {
@@ -190,7 +198,7 @@ fun StudentHomeScreen(
                                 modifier = Modifier
                                     .size(20.dp)
                                     .clickable { onSearchClick() },
-                                tint = Color(0xFF64748B)
+                                tint = Color(0xFF334155)
                             )
                         },
                         modifier = Modifier
@@ -199,8 +207,10 @@ fun StudentHomeScreen(
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
                             focusedBorderColor = Color(0xFF0F2C59),
-                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            unfocusedBorderColor = Color(0xFF94A3B8),
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White
                         )
@@ -295,7 +305,8 @@ fun StudentHomeScreen(
                         Text(
                             text = "Computer Science & Engineering",
                             fontSize = 12.sp,
-                            color = Color(0xFF64748B)
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF334155)
                         )
                     }
 
@@ -358,7 +369,8 @@ fun StudentHomeScreen(
                     Text(
                         text = "Updated today",
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
                     )
                 }
 
@@ -423,7 +435,10 @@ fun StudentHomeScreen(
                     label = "Profile",
                     isSelected = selectedBottomNav == 3,
                     icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF0F766E) else Color(0xFF64748B)) },
-                    onClick = { selectedBottomNav = 3 }
+                    onClick = {
+                        selectedBottomNav = 3
+                        onProfileClick()
+                    }
                 )
             }
         }
@@ -485,7 +500,8 @@ fun UrgentAlertBanner(modifier: Modifier = Modifier) {
                     Text(
                         text = "• 3 days remaining",
                         fontSize = 11.sp,
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
                     )
                 }
 
@@ -526,8 +542,8 @@ fun UrgentAlertBanner(modifier: Modifier = Modifier) {
                     Text(
                         text = "Dismiss",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF64748B),
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF334155),
                         modifier = Modifier.clickable { }
                     )
                 }
@@ -642,7 +658,8 @@ fun InternshipCard(
             Text(
                 text = companyLocation,
                 fontSize = 12.sp,
-                color = Color(0xFF64748B)
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF334155)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -661,24 +678,24 @@ fun InternshipCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
+                            CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Duration: ", fontSize = 11.sp, color = Color(0xFF64748B))
+                            Text(text = "Duration: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                             Text(text = duration, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
+                            CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Deadline: ", fontSize = 11.sp, color = Color(0xFF64748B))
+                            Text(text = "Deadline: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                             Text(text = deadline, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CategoryIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
+                        CategoryIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Field: ", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text(text = "Field: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                         Text(text = field, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E3A8A))
                     }
                 }
@@ -757,7 +774,8 @@ fun PostingCard(
             Text(
                 text = companyLocation,
                 fontSize = 12.sp,
-                color = Color(0xFF64748B)
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF334155)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -774,16 +792,16 @@ fun PostingCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
+                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Duration: ", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text(text = "Duration: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                         Text(text = duration, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
+                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Deadline: ", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text(text = "Deadline: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                         Text(text = deadline, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                     }
                 }

@@ -17,48 +17,64 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             UniversityIntershipAppTheme {
-                var currentScreen by remember { mutableStateOf("home") }
+                var currentScreen by remember { mutableStateOf("splash") }
+                var loginErrorMsg by remember { mutableStateOf<String?>(null) }
 
-                if (currentScreen != "home") {
+                if (currentScreen != "student_login" && currentScreen != "splash") {
                     BackHandler {
                         currentScreen = when (currentScreen) {
+                            "register" -> "student_login"
                             "my_applications" -> "student_home"
+                            "student_profile" -> "student_home"
                             "application_submitted" -> "student_home"
                             "submit_application" -> "student_application"
                             "student_application" -> "student_home"
                             "student_search" -> "student_home"
-                            "student_home" -> "home"
-                            else -> "home"
+                            "employer_home" -> "student_login"
+                            "student_home" -> "student_login"
+                            else -> "student_login"
                         }
                     }
                 }
 
                 when (currentScreen) {
-                    "home" -> HomeScreen(
-                        onGetStartedClick = { pathway ->
-                            currentScreen = when (pathway) {
-                                PortalPathway.STUDENT -> "student_login"
-                                PortalPathway.EMPLOYER -> "employer_login"
-                            }
-                        },
-                        onLogInClick = { pathway ->
-                            currentScreen = when (pathway) {
-                                PortalPathway.STUDENT -> "student_login"
-                                PortalPathway.EMPLOYER -> "employer_login"
-                            }
-                        },
+                    "splash" -> SplashScreen(
+                        onSplashFinished = {
+                            currentScreen = "student_login"
+                        }
                     )
                     "student_login" -> LoginScreen(
-                        onBackClick = {
-                            currentScreen = "home"
+                        errorMessage = loginErrorMsg,
+                        onLoginSubmit = { email, _ ->
+                            val trimmed = email.trim().lowercase()
+                            when {
+                                trimmed == "student@unima.ac.mw" || trimmed.endsWith("@unima.ac.mw") || trimmed.contains("student") -> {
+                                    loginErrorMsg = null
+                                    currentScreen = "student_home"
+                                }
+                                trimmed == "employer@company.com" || trimmed.endsWith("@company.com") || trimmed.contains("employer") || trimmed.contains("hiring") -> {
+                                    loginErrorMsg = null
+                                    currentScreen = "employer_home"
+                                }
+                                else -> {
+                                    loginErrorMsg = "Unrecognized email or invalid test credentials. Use student@unima.ac.mw or employer@company.com"
+                                }
+                            }
                         },
-                        onLoginSubmit = { _, _ ->
-                            currentScreen = "student_home"
+                        onSignUpClick = {
+                            loginErrorMsg = null
+                            currentScreen = "register"
                         },
                     )
-                    "employer_login" -> EmployerLoginScreen(
+                    "register" -> RegisterScreen(
                         onBackClick = {
-                            currentScreen = "home"
+                            currentScreen = "student_login"
+                        },
+                        onLoginClick = {
+                            currentScreen = "student_login"
+                        },
+                        onCreateAccountSuccess = {
+                            currentScreen = "student_home"
                         },
                     )
                     "student_home" -> StudentHomeScreen(
@@ -72,7 +88,19 @@ class MainActivity : ComponentActivity() {
                             currentScreen = "my_applications"
                         },
                         onProfileClick = {
-                            currentScreen = "home"
+                            currentScreen = "student_profile"
+                        },
+                    )
+                    "employer_home" -> EmployerHomeScreen(
+                        onPostInternshipClick = {
+                            // Can route to post job or search
+                        },
+                        onViewApplicantsClick = { _ ->
+                            // View applicants
+                        },
+                        onLogOutClick = {
+                            loginErrorMsg = null
+                            currentScreen = "student_login"
                         },
                     )
                     "student_search" -> StudentSearchScreen(
@@ -84,6 +112,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onApplicationsNavClick = {
                             currentScreen = "my_applications"
+                        },
+                        onProfileNavClick = {
+                            currentScreen = "student_profile"
                         },
                         onApplyClick = { _ ->
                             currentScreen = "student_application"
@@ -124,13 +155,28 @@ class MainActivity : ComponentActivity() {
                             currentScreen = "student_search"
                         },
                         onNavigateProfile = {
-                            currentScreen = "home"
+                            currentScreen = "student_profile"
                         },
                         onViewDetails = { _ ->
                             currentScreen = "student_application"
                         },
                         onPrepInterview = { _ ->
                             currentScreen = "student_application"
+                        },
+                    )
+                    "student_profile" -> StudentProfileScreen(
+                        onNavigateHome = {
+                            currentScreen = "student_home"
+                        },
+                        onNavigateSearch = {
+                            currentScreen = "student_search"
+                        },
+                        onNavigateApplications = {
+                            currentScreen = "my_applications"
+                        },
+                        onLogOut = {
+                            loginErrorMsg = null
+                            currentScreen = "student_login"
                         },
                     )
                 }

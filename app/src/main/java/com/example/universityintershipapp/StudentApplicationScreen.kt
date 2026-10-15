@@ -209,14 +209,14 @@ fun StudentApplicationScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
-                                    Text(text = "Location", fontSize = 11.sp, color = Color(0xFF64748B))
+                                    Text(text = "Location", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                                     Text(
                                         text = location,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF0F172A)
                                     )
-                                    Text(text = "Hybrid / On-site", fontSize = 11.sp, color = Color(0xFF64748B))
+                                    Text(text = "Hybrid / On-site", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                                 }
                             }
 
@@ -228,14 +228,14 @@ fun StudentApplicationScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
-                                    Text(text = "Duration & Pace", fontSize = 11.sp, color = Color(0xFF64748B))
+                                    Text(text = "Duration & Pace", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                                     Text(
                                         text = "12 Weeks",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF0F172A)
                                     )
-                                    Text(text = "Full-time (40 hrs/wk)", fontSize = 11.sp, color = Color(0xFF64748B))
+                                    Text(text = "Full-time (40 hrs/wk)", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                                 }
                             }
                         }
@@ -381,7 +381,8 @@ fun StudentApplicationScreen(
                         Text(
                             text = "As a Software Engineering Intern at $company, you will work on core enterprise architecture and user-facing features that impact billions of worldwide users. You will be matched with an industry mentor and integrated into an active agile engineering team.",
                             fontSize = 13.sp,
-                            color = Color(0xFF475569),
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF334155),
                             lineHeight = 19.sp
                         )
 

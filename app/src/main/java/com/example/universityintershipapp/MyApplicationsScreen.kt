@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -384,35 +385,37 @@ fun MyApplicationsScreen(
                             OutlinedButton(
                                 onClick = { onViewDetails("UNI-8842") },
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .weight(1.1f)
                                     .height(46.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, OutlineVariant)
                             ) {
                                 VisibilityIcon(modifier = Modifier.size(16.dp), tint = NavyPrimary)
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "View Details",
                                     fontSize = 13.sp,
                                     color = NavyPrimary,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                             Button(
                                 onClick = { onPrepInterview("UNI-8842") },
                                 modifier = Modifier
-                                    .weight(1.2f)
+                                    .weight(1.1f)
                                     .height(46.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = NavyDark)
                             ) {
                                 VideocamIcon(modifier = Modifier.size(18.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "Prep Interview",
                                     fontSize = 13.sp,
                                     color = Color.White,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
