@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,7 +40,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -53,11 +51,9 @@ import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    errorMessage: String? = null,
     onBackClick: () -> Unit = {},
     onLoginSubmit: (String, String) -> Unit = { _, _ -> },
     onForgotPasswordClick: () -> Unit = {},
-    onSignUpClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
 ) {
     var username by remember { mutableStateOf("") }
@@ -79,7 +75,6 @@ fun LoginScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.size(36.dp))
 
             Row(
                 modifier = Modifier.weight(1f),
@@ -126,7 +121,6 @@ fun LoginScreen(
                         color = Color(0xFF0F2C59)
                     )
                     Text(
-                        text = "PORTAL",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0F766E),
@@ -155,14 +149,10 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .imePadding()
                 .padding(horizontal = 24.dp, vertical = 28.dp)
         ) {
             Text(
-                text = "Log in with your university credentials or employer email",
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A),
                 lineHeight = 20.sp
             )
 
@@ -170,7 +160,6 @@ fun LoginScreen(
 
             // Username Field
             Text(
-                text = "Email",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF0F172A)
@@ -181,34 +170,20 @@ fun LoginScreen(
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                textStyle = TextStyle(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
-                ),
                 placeholder = {
                     Text(
-                        text = "Enter student or employer email",
-                        color = Color(0xFF64748B),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal
                     )
                 },
                 leadingIcon = {
                     PersonIcon(
                         modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF0F2C59)
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color(0xFF0F172A),
-                    unfocusedTextColor = Color(0xFF0F172A),
-                    cursorColor = Color(0xFF0F2C59),
                     focusedBorderColor = Color(0xFF0F2C59),
-                    unfocusedBorderColor = Color(0xFF475569),
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White
                 )
@@ -222,13 +197,9 @@ fun LoginScreen(
             ) {
                 InfoIcon(
                     modifier = Modifier.size(14.dp),
-                    tint = Color(0xFF0F2C59)
                 )
                 Text(
-                    text = "Use your institution-issued email or work email",
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
                 )
             }
 
@@ -247,23 +218,14 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                textStyle = TextStyle(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
-                ),
                 placeholder = {
                     Text(
                         text = "Enter your password",
-                        color = Color(0xFF64748B),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal
                     )
                 },
                 leadingIcon = {
                     LockIcon(
                         modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF0F2C59)
                     )
                 },
                 trailingIcon = {
@@ -273,7 +235,6 @@ fun LoginScreen(
                     ) {
                         EyeIcon(
                             modifier = Modifier.size(20.dp),
-                            tint = Color(0xFF0F2C59)
                         )
                     }
                 },
@@ -282,11 +243,7 @@ fun LoginScreen(
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color(0xFF0F172A),
-                    unfocusedTextColor = Color(0xFF0F172A),
-                    cursorColor = Color(0xFF0F2C59),
                     focusedBorderColor = Color(0xFF0F2C59),
-                    unfocusedBorderColor = Color(0xFF475569),
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White
                 )
@@ -309,15 +266,12 @@ fun LoginScreen(
                         onCheckedChange = { rememberUsername = it },
                         colors = CheckboxDefaults.colors(
                             checkedColor = Color(0xFF1B3B80),
-                            uncheckedColor = Color(0xFF475569)
                         )
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Remember username",
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
                     )
                 }
 
@@ -327,16 +281,6 @@ fun LoginScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1B3B80),
                     modifier = Modifier.clickable { onForgotPasswordClick() }
-                )
-            }
-
-            if (!errorMessage.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = errorMessage,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFDC2626)
                 )
             }
 
@@ -369,28 +313,6 @@ fun LoginScreen(
                         tint = Color.White
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Don't have an account? Sign Up
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Don't have an account? ",
-                    fontSize = 14.sp,
-                    color = Color(0xFF64748B)
-                )
-                Text(
-                    text = "Sign Up",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B3B80),
-                    modifier = Modifier.clickable { onSignUpClick() }
-                )
             }
         }
     }
