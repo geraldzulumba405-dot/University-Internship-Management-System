@@ -1,5 +1,6 @@
 package com.example.universityintershipapp
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -53,6 +55,7 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onLoginSubmit: (String, String) -> Unit = { _, _ -> },
+    onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
 ) {
@@ -60,6 +63,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(value = false) }
     var rememberUsername by remember { mutableStateOf(value = false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -68,115 +72,92 @@ fun LoginScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        // 1. Top Bar Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 2. Centered Logo and App Name
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            UniInternAppLogo(modifier = Modifier.size(120.dp))
 
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(Color(0xFF1B3B80), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Canvas(modifier = Modifier.size(20.dp)) {
-                        val w = size.width
-                        val h = size.height
+            Spacer(modifier = Modifier.height(14.dp))
 
-                        val capTop = Path().apply {
-                            moveTo(w * 0.5f, h * 0.15f)
-                            lineTo(w * 0.9f, h * 0.38f)
-                            lineTo(w * 0.5f, h * 0.60f)
-                            lineTo(w * 0.1f, h * 0.38f)
-                            close()
-                        }
-                        drawPath(capTop, color = Color.White)
-
-                        val capBottom = Path().apply {
-                            moveTo(w * 0.25f, h * 0.48f)
-                            lineTo(w * 0.25f, h * 0.68f)
-                            cubicTo(w * 0.25f, h * 0.82f, w * 0.75f, h * 0.82f, w * 0.75f, h * 0.68f)
-                            lineTo(w * 0.75f, h * 0.48f)
-                            close()
-                        }
-                        drawPath(capBottom, color = Color.White)
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Column {
-                    Text(
-                        text = "UniIntern",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F2C59)
-                    )
-                    Text(
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F766E),
-                        letterSpacing = 0.5.sp
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clickable { onHelpClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                HelpIcon(
-                    modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF334155)
-                )
-            }
+            Text(
+                text = "UniIntern",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F2C59)
+            )
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
 
-        // 2. Main Scrollable Form Body
+        // 3. Main Scrollable Form Body
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 28.dp)
+                .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
             Text(
-                fontSize = 14.sp,
-                lineHeight = 20.sp
+                text = "Log in to your account to continue",
+                fontSize = 13.sp,
+                color = Color(0xFF171717),
+                lineHeight = 18.sp
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Username Field
+            // Error Banner if invalid credentials or empty fields
+            errorMessage?.let { errorText ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFFEF2F2),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFECACA))
+                ) {
+                    Text(
+                        text = errorText,
+                        fontSize = 13.sp,
+                        color = Color(0xFFB91C1C),
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 18.sp,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Email Field
             Text(
+                text = "Email",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A)
+                color = Color(0xFF000000)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = username,
-                onValueChange = { username = it },
+                onValueChange = {
+                    username = it
+                    errorMessage = null
+                },
                 placeholder = {
                     Text(
+                        text = "Enter your username or email",
+                        color = Color(0xFF525252),
+                        fontSize = 13.sp
                     )
                 },
                 leadingIcon = {
                     PersonIcon(
                         modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF525252)
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -189,43 +170,35 @@ fun LoginScreen(
                 )
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                InfoIcon(
-                    modifier = Modifier.size(14.dp),
-                )
-                Text(
-                    fontSize = 12.sp,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Password Field
             Text(
                 text = "Password",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A)
+                color = Color(0xFF000000)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    errorMessage = null
+                },
                 placeholder = {
                     Text(
                         text = "Enter your password",
+                        color = Color(0xFF525252),
+                        fontSize = 13.sp
                     )
                 },
                 leadingIcon = {
                     LockIcon(
                         modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF525252)
                     )
                 },
                 trailingIcon = {
@@ -272,6 +245,7 @@ fun LoginScreen(
                     Text(
                         text = "Remember username",
                         fontSize = 13.sp,
+                        color = Color(0xFF171717)
                     )
                 }
 
@@ -288,7 +262,24 @@ fun LoginScreen(
 
             // Log In Button
             Button(
-                onClick = { onLoginSubmit(username, password) },
+                onClick = {
+                    val cleanEmail = username.trim().lowercase()
+                    when {
+                        cleanEmail.isBlank() -> {
+                            errorMessage = "Please enter your email address."
+                        }
+                        password.isBlank() -> {
+                            errorMessage = "Please enter your password."
+                        }
+                        cleanEmail == "student@unima.ac.mw" || cleanEmail == "employer@company.com" -> {
+                            errorMessage = null
+                            onLoginSubmit(cleanEmail, password)
+                        }
+                        else -> {
+                            errorMessage = "Unrecognized email or invalid test credentials.\nPlease use student@unima.ac.mw or employer@company.com"
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -313,6 +304,98 @@ fun LoginScreen(
                         tint = Color.White
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Register Footer
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Don't have an account? ",
+                    fontSize = 13.sp,
+                    color = Color(0xFF171717)
+                )
+                Text(
+                    text = "Sign Up",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F2C59),
+                    modifier = Modifier.clickable { onRegisterClick() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun UniInternAppLogo(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        color = Color(0xFF1B3B80)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.size(82.dp)) {
+                val w = size.width
+                val h = size.height
+                val capBlue = Color(0xFF38BDF8)
+                val whiteBg = Color.White
+                val darkNavy = Color(0xFF1B3B80)
+
+                // White U-shaped cap base
+                val capBase = Path().apply {
+                    moveTo(w * 0.22f, h * 0.42f)
+                    lineTo(w * 0.22f, h * 0.60f)
+                    cubicTo(w * 0.22f, h * 0.86f, w * 0.78f, h * 0.86f, w * 0.78f, h * 0.60f)
+                    lineTo(w * 0.78f, h * 0.42f)
+                    close()
+                }
+                drawPath(capBase, color = whiteBg)
+
+                // Checkmark inside white base
+                val checkPath = Path().apply {
+                    moveTo(w * 0.38f, h * 0.58f)
+                    lineTo(w * 0.48f, h * 0.68f)
+                    lineTo(w * 0.64f, h * 0.50f)
+                }
+                drawPath(
+                    path = checkPath,
+                    color = darkNavy,
+                    style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+
+                // Diamond Cap Top
+                val capTop = Path().apply {
+                    moveTo(w * 0.50f, h * 0.20f)
+                    lineTo(w * 0.92f, h * 0.40f)
+                    lineTo(w * 0.50f, h * 0.60f)
+                    lineTo(w * 0.08f, h * 0.40f)
+                    close()
+                }
+                drawPath(capTop, color = capBlue)
+
+                // Tassel hanging on the right
+                val tasselLine = Path().apply {
+                    moveTo(w * 0.82f, h * 0.42f)
+                    lineTo(w * 0.82f, h * 0.66f)
+                }
+                drawPath(
+                    path = tasselLine,
+                    color = capBlue,
+                    style = Stroke(width = w * 0.07f, cap = StrokeCap.Round)
+                )
+                drawCircle(
+                    color = capBlue,
+                    radius = w * 0.05f,
+                    center = Offset(w * 0.82f, h * 0.68f)
+                )
             }
         }
     }

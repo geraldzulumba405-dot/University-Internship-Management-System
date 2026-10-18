@@ -3,6 +3,7 @@ package com.example.universityintershipapp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +56,8 @@ fun EmployerHomeScreen(
     companyName: String = "Google LLC",
     onPostInternshipClick: () -> Unit = {},
     onViewApplicantsClick: (String) -> Unit = {},
+    onNavigateApplicants: () -> Unit = {},
+    onNavigateProfile: () -> Unit = {},
     onLogOutClick: () -> Unit = {}
 ) {
     var selectedBottomNav by remember { mutableIntStateOf(0) }
@@ -285,7 +289,7 @@ fun EmployerHomeScreen(
                 ApplicantCard(
                     studentName = "Gerald Zulumba",
                     program = "B.Sc. Computer Science (Yr 3)",
-                    gpa = "3.84 GPA",
+                    gpa = "GPA 3.84",
                     appliedFor = "Software Engineering Intern",
                     onReviewClick = { onViewApplicantsClick("SE-01") }
                 )
@@ -295,7 +299,7 @@ fun EmployerHomeScreen(
                 ApplicantCard(
                     studentName = "Alex Chen",
                     program = "B.Sc. Software Engineering (Yr 3)",
-                    gpa = "3.90 GPA",
+                    gpa = "GPA 3.90",
                     appliedFor = "Data Science & AI Intern",
                     onReviewClick = { onViewApplicantsClick("DS-02") }
                 )
@@ -335,14 +339,20 @@ fun EmployerHomeScreen(
                     label = "Applicants",
                     isSelected = selectedBottomNav == 2,
                     icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF0F766E) else Color(0xFF64748B)) },
-                    onClick = { selectedBottomNav = 2 }
+                    onClick = {
+                        selectedBottomNav = 2
+                        onNavigateApplicants()
+                    }
                 )
 
                 BottomNavItem(
                     label = "Profile",
                     isSelected = selectedBottomNav == 3,
                     icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF0F766E) else Color(0xFF64748B)) },
-                    onClick = { selectedBottomNav = 3 }
+                    onClick = {
+                        selectedBottomNav = 3
+                        onNavigateProfile()
+                    }
                 )
             }
         }
@@ -498,53 +508,69 @@ private fun ApplicantCard(
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(Color(0xFFEFF6FF), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                PersonIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF1E3A8A))
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Profile Icon adjacent to the user
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(Color(0xFFEEF2FF), CircleShape)
+                            .border(1.dp, Color(0xFFC7D2FE), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        PersonIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF1E3A8A))
+                    }
+
                     Text(
                         text = studentName,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = Color(0xFF0F172A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Surface(color = Color(0xFFCCFBF1), shape = RoundedCornerShape(50)) {
+
+                    // GPA Pill Badge
+                    Surface(
+                        color = Color(0xFFCCFBF1),
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(1.dp, Color(0xFF99F6E4))
+                    ) {
                         Text(
                             text = gpa,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF0F766E),
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(2.dp))
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Text(
                     text = program,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF334155)
                 )
                 Text(
                     text = "Applied: $appliedFor",
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E3A8A)
                 )
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             Button(
                 onClick = onReviewClick,
@@ -555,21 +581,6 @@ private fun ApplicantCard(
                 Text(text = "Review", fontSize = 11.sp, color = Color.White)
             }
         }
-    }
-}
-
-@Composable
-fun PlusIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFF0F2C59)
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val stroke = w * 0.12f
-
-        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.2f), end = Offset(w * 0.5f, h * 0.8f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.2f, h * 0.5f), end = Offset(w * 0.8f, h * 0.5f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
 }
 

@@ -258,12 +258,12 @@ fun RegisterScreen(
                         text = "Create your account",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F2C59)
+                        color = Color(0xFF000000)
                     )
                     Text(
                         text = "University Internship Management System",
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        color = Color(0xFF404040)
                     )
                 }
             }
@@ -283,7 +283,7 @@ fun RegisterScreen(
                     text = "Register as",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = Color(0xFF000000)
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -326,7 +326,7 @@ fun RegisterScreen(
                         text = "Employer details",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F2C59)
+                        color = Color(0xFF000000)
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -337,7 +337,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerContactName,
                         onValueChange = { employerContactName = it },
-                        placeholder = { Text("Enter the contact person's full name", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Enter the contact person's full name", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { PersonIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         isError = showErrors && employerContactName.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
@@ -354,7 +354,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerCompanyName,
                         onValueChange = { employerCompanyName = it },
-                        placeholder = { Text("Enter your company or organization name", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Enter your company or organization name", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { BuildingIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         isError = showErrors && employerCompanyName.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
@@ -371,7 +371,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerEmail,
                         onValueChange = { employerEmail = it },
-                        placeholder = { Text("e.g. careers@company.com", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("e.g. careers@company.com", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { EmailIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         isError = showErrors && (employerEmail.isBlank() || !employerEmail.contains("@")),
@@ -389,7 +389,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerPhone,
                         onValueChange = { employerPhone = it },
-                        placeholder = { Text("e.g. +265 999 123 456", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("e.g. +265 999 123 456", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { PhoneIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         isError = showErrors && employerPhone.isBlank(),
@@ -409,7 +409,7 @@ fun RegisterScreen(
                             value = employerSector,
                             onValueChange = {},
                             readOnly = true,
-                            placeholder = { Text("Select sector", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                            placeholder = { Text("Select sector", color = Color(0xFF525252), fontSize = 14.sp) },
                             leadingIcon = { CategoryIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                             trailingIcon = {
                                 Box(
@@ -434,7 +434,7 @@ fun RegisterScreen(
                         ) {
                             sectorOptions.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF0F172A)) },
+                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF000000)) },
                                     onClick = {
                                         employerSector = option
                                         employerSectorDropdownExpanded = false
@@ -452,7 +452,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerLocation,
                         onValueChange = { employerLocation = it },
-                        placeholder = { Text("Enter city, district, or physical location", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Enter city, district, or physical location", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { LocationPinIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         isError = showErrors && employerLocation.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
@@ -469,7 +469,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerWebsite,
                         onValueChange = { employerWebsite = it },
-                        placeholder = { Text("https://www.example.com", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("https://www.example.com", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { GlobeIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         modifier = Modifier.fillMaxWidth(),
@@ -486,7 +486,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerDescription,
                         onValueChange = { employerDescription = it },
-                        placeholder = { Text("Briefly describe your organization and the work it does", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Briefly describe your organization and the work it does", color = Color(0xFF525252), fontSize = 14.sp) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(100.dp),
@@ -503,7 +503,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerPassword,
                         onValueChange = { employerPassword = it },
-                        placeholder = { Text("Create a password (minimum 6 characters)", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Create a password (minimum 6 characters)", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { LockIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         trailingIcon = {
                             Box(
@@ -530,7 +530,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = employerConfirmPassword,
                         onValueChange = { employerConfirmPassword = it },
-                        placeholder = { Text("Re-enter your password", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Re-enter your password", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { LockIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         trailingIcon = {
                             Box(
@@ -554,7 +554,7 @@ fun RegisterScreen(
                         text = "Student details",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F2C59)
+                        color = Color(0xFF000000)
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -565,7 +565,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = fullName,
                         onValueChange = { fullName = it },
-                        placeholder = { Text("Enter your full name", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Enter your full name", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { PersonIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         isError = showErrors && fullName.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
@@ -582,7 +582,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = studentId,
                         onValueChange = { studentId = it },
-                        placeholder = { Text("e.g. U2021-0842", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("e.g. U2021-0842", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { IdCardIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         isError = showErrors && studentId.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
@@ -599,7 +599,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        placeholder = { Text("student@unima.ac.mw", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("student@unima.ac.mw", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { EmailIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         isError = showErrors && (email.isBlank() || !email.contains("@")),
@@ -617,7 +617,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = phoneNumber,
                         onValueChange = { phoneNumber = it },
-                        placeholder = { Text("+265 999 123 456", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("+265 999 123 456", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { PhoneIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         isError = showErrors && phoneNumber.isBlank(),
@@ -637,7 +637,7 @@ fun RegisterScreen(
                             value = programme,
                             onValueChange = {},
                             readOnly = true,
-                            placeholder = { Text("Select your programme", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                            placeholder = { Text("Select your programme", color = Color(0xFF525252), fontSize = 14.sp) },
                             leadingIcon = { GraduationCapIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                             trailingIcon = {
                                 Box(
@@ -662,7 +662,7 @@ fun RegisterScreen(
                         ) {
                             programmeOptions.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF0F172A)) },
+                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF000000)) },
                                     onClick = {
                                         programme = option
                                         programmeDropdownExpanded = false
@@ -682,7 +682,7 @@ fun RegisterScreen(
                             value = yearOfStudy,
                             onValueChange = {},
                             readOnly = true,
-                            placeholder = { Text("Select year", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                            placeholder = { Text("Select year", color = Color(0xFF525252), fontSize = 14.sp) },
                             leadingIcon = { CalendarIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                             trailingIcon = {
                                 Box(
@@ -707,7 +707,7 @@ fun RegisterScreen(
                         ) {
                             yearOptions.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF0F172A)) },
+                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF000000)) },
                                     onClick = {
                                         yearOfStudy = option
                                         yearDropdownExpanded = false
@@ -725,7 +725,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = skills,
                         onValueChange = { skills = it },
-                        placeholder = { Text("Describe your skills (e.g. Kotlin, Python, UI Design)", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Describe your skills (e.g. Kotlin, Python, UI Design)", color = Color(0xFF525252), fontSize = 14.sp) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(100.dp),
@@ -742,7 +742,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        placeholder = { Text("Create a password (min. 6 chars)", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Create a password (min. 6 chars)", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { LockIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         trailingIcon = {
                             Box(
@@ -769,7 +769,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
-                        placeholder = { Text("Re-enter your password", color = Color(0xFF94A3B8), fontSize = 14.sp) },
+                        placeholder = { Text("Re-enter your password", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { LockIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         trailingIcon = {
                             Box(
@@ -796,7 +796,7 @@ fun RegisterScreen(
                         text = validationErrorMsg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFFDC2626)
+                        color = Color(0xFFB91C1C)
                     )
                 }
 
@@ -837,7 +837,7 @@ fun RegisterScreen(
                     Text(
                         text = "Already have an account? ",
                         fontSize = 14.sp,
-                        color = Color(0xFF64748B)
+                        color = Color(0xFF404040)
                     )
                     Text(
                         text = "Log in",
@@ -892,7 +892,7 @@ private fun AccountTypeCard(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B)
+                color = Color(0xFF000000)
             )
         }
     }
@@ -904,19 +904,19 @@ private fun FormFieldLabel(label: String) {
         text = label,
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF0F172A)
+        color = Color(0xFF000000)
     )
 }
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color(0xFF0F172A),
-    unfocusedTextColor = Color(0xFF0F172A),
+    focusedTextColor = Color(0xFF000000),
+    unfocusedTextColor = Color(0xFF000000),
     focusedBorderColor = Color(0xFF0F2C59),
     unfocusedBorderColor = Color(0xFF94A3B8),
     focusedContainerColor = Color.White,
     unfocusedContainerColor = Color.White,
-    errorBorderColor = Color(0xFFDC2626)
+    errorBorderColor = Color(0xFFB91C1C)
 )
 
 @Composable
@@ -999,42 +999,6 @@ fun PhoneIcon(
 }
 
 @Composable
-fun BuildingIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFF64748B)
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val stroke = w * 0.08f
-
-        val building = Path().apply {
-            moveTo(w * 0.20f, h * 0.85f)
-            lineTo(w * 0.20f, h * 0.18f)
-            lineTo(w * 0.80f, h * 0.18f)
-            lineTo(w * 0.80f, h * 0.85f)
-            close()
-        }
-        drawPath(building, color = tint, style = Stroke(width = stroke))
-
-        val windowW = w * 0.12f
-        val windowH = h * 0.12f
-        val x1 = w * 0.32f
-        val x2 = w * 0.56f
-        val y1 = h * 0.30f
-        val y2 = h * 0.48f
-        val y3 = h * 0.66f
-
-        drawRect(color = tint, topLeft = Offset(x1, y1), size = Size(windowW, windowH))
-        drawRect(color = tint, topLeft = Offset(x2, y1), size = Size(windowW, windowH))
-        drawRect(color = tint, topLeft = Offset(x1, y2), size = Size(windowW, windowH))
-        drawRect(color = tint, topLeft = Offset(x2, y2), size = Size(windowW, windowH))
-        drawRect(color = tint, topLeft = Offset(x1, y3), size = Size(windowW, windowH))
-        drawRect(color = tint, topLeft = Offset(x2, y3), size = Size(windowW, windowH))
-    }
-}
-
-@Composable
 fun GlobeIcon(
     modifier: Modifier = Modifier,
     tint: Color = Color(0xFF64748B)
@@ -1057,8 +1021,6 @@ fun GlobeIcon(
         )
     }
 }
-
-
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
