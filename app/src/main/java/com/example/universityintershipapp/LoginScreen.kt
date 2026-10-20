@@ -263,20 +263,13 @@ fun LoginScreen(
             // Log In Button
             Button(
                 onClick = {
-                    val cleanEmail = username.trim().lowercase()
-                    when {
-                        cleanEmail.isBlank() -> {
-                            errorMessage = "Please enter your email address."
-                        }
-                        password.isBlank() -> {
-                            errorMessage = "Please enter your password."
-                        }
-                        cleanEmail == "student@unima.ac.mw" || cleanEmail == "employer@company.com" -> {
+                    when (val res = ValidationUtils.validateLoginInput(username, password)) {
+                        is ValidationResult.Success -> {
                             errorMessage = null
-                            onLoginSubmit(cleanEmail, password)
+                            onLoginSubmit(res.email, password)
                         }
-                        else -> {
-                            errorMessage = "Unrecognized email or invalid test credentials.\nPlease use student@unima.ac.mw or employer@company.com"
+                        is ValidationResult.Error -> {
+                            errorMessage = res.message
                         }
                     }
                 },

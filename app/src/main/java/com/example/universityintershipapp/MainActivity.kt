@@ -62,11 +62,7 @@ class MainActivity : ComponentActivity() {
                             onBackClick = {},
                             onLoginSubmit = { email, _ ->
                                 val cleanEmail = email.trim().lowercase()
-                                if (cleanEmail == "employer@company.com") {
-                                    currentScreen = AppScreen.EMPLOYER_HOME
-                                } else if (cleanEmail == "student@unima.ac.mw") {
-                                    currentScreen = AppScreen.STUDENT_HOME
-                                } else if (cleanEmail.contains("employer") || cleanEmail.contains("company")) {
+                                if (cleanEmail == "employer@company.com" || cleanEmail.contains("employer") || cleanEmail.contains("company")) {
                                     currentScreen = AppScreen.EMPLOYER_HOME
                                 } else {
                                     currentScreen = AppScreen.STUDENT_HOME

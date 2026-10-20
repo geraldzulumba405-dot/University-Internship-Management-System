@@ -135,40 +135,14 @@ fun RegisterScreen(
     )
 
     fun validateStudentForm(): Boolean {
-        return when {
-            fullName.isBlank() -> {
-                validationErrorMsg = "Please enter your full name."
+        return when (val res = ValidationUtils.validateStudentRegistrationInput(
+            fullName, studentId, email, phoneNumber, programme, yearOfStudy, password, confirmPassword
+        )) {
+            is ValidationResult.Error -> {
+                validationErrorMsg = res.message
                 false
             }
-            studentId.isBlank() -> {
-                validationErrorMsg = "Please enter your student ID."
-                false
-            }
-            email.isBlank() || !email.contains("@") -> {
-                validationErrorMsg = "Please enter a valid email address."
-                false
-            }
-            phoneNumber.isBlank() -> {
-                validationErrorMsg = "Please enter your phone number."
-                false
-            }
-            programme.isBlank() -> {
-                validationErrorMsg = "Please select your programme of study."
-                false
-            }
-            yearOfStudy.isBlank() -> {
-                validationErrorMsg = "Please select your year of study."
-                false
-            }
-            (password.isBlank() || password.length < 6) -> {
-                validationErrorMsg = "Password must be at least 6 characters long."
-                false
-            }
-            confirmPassword != password -> {
-                validationErrorMsg = "Passwords do not match."
-                false
-            }
-            else -> {
+            is ValidationResult.Success -> {
                 validationErrorMsg = ""
                 true
             }
@@ -176,40 +150,14 @@ fun RegisterScreen(
     }
 
     fun validateEmployerForm(): Boolean {
-        return when {
-            employerContactName.isBlank() -> {
-                validationErrorMsg = "Please enter the contact person's full name."
+        return when (val res = ValidationUtils.validateEmployerRegistrationInput(
+            employerContactName, employerCompanyName, employerEmail, employerPhone, employerSector, employerLocation, employerPassword, employerConfirmPassword
+        )) {
+            is ValidationResult.Error -> {
+                validationErrorMsg = res.message
                 false
             }
-            employerCompanyName.isBlank() -> {
-                validationErrorMsg = "Please enter your company or organization name."
-                false
-            }
-            employerEmail.isBlank() || !employerEmail.contains("@") -> {
-                validationErrorMsg = "Please enter a valid organization email address."
-                false
-            }
-            employerPhone.isBlank() -> {
-                validationErrorMsg = "Please enter your phone number."
-                false
-            }
-            employerSector.isBlank() -> {
-                validationErrorMsg = "Please select your industry or sector."
-                false
-            }
-            employerLocation.isBlank() -> {
-                validationErrorMsg = "Please enter your organization's location."
-                false
-            }
-            (employerPassword.isBlank() || employerPassword.length < 6) -> {
-                validationErrorMsg = "Password must be at least 6 characters long."
-                false
-            }
-            employerConfirmPassword != employerPassword -> {
-                validationErrorMsg = "Passwords do not match."
-                false
-            }
-            else -> {
+            is ValidationResult.Success -> {
                 validationErrorMsg = ""
                 true
             }
