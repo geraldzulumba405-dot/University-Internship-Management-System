@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -51,6 +52,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 
+data class InternshipSearchItem(
+    val id: String,
+    val title: String,
+    val company: String,
+    val location: String,
+    val workType: String, // "Hybrid", "Remote", "On-site"
+    val isCsSoftware: Boolean,
+    val isPaid: Boolean,
+    val deadline: String,
+    val tags: List<TagData>,
+    val iconType: String // "terminal", "monitor", "shield"
+)
+
 @Composable
 fun StudentSearchScreen(
     modifier: Modifier = Modifier,
@@ -63,6 +77,118 @@ fun StudentSearchScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedBottomNav by remember { mutableIntStateOf(1) }
+
+    // Interactive Filter States
+    var filterCsSoftware by remember { mutableStateOf(true) }
+    var filterRemoteHybrid by remember { mutableStateOf(true) }
+    var filterPaidOnly by remember { mutableStateOf(true) }
+
+    val activeFilterCount = (if (filterCsSoftware) 1 else 0) +
+            (if (filterRemoteHybrid) 1 else 0) +
+            (if (filterPaidOnly) 1 else 0)
+
+    // Internship Listings Dataset
+    val allListings = remember {
+        listOf(
+            InternshipSearchItem(
+                id = "CLOUD-01",
+                title = "Cloud Infrastructure Intern",
+                company = "Sparc Systems",
+                location = "Lilongwe",
+                workType = "Hybrid",
+                isCsSoftware = true,
+                isPaid = true,
+                deadline = "December 20, 2026",
+                tags = listOf(
+                    TagData("Hybrid", Color(0xFF99F6E4), Color(0xFF0F766E)),
+                    TagData("3 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("5 days left", Color(0xFFFEE2E2), Color(0xFFDC2626), showClock = true),
+                    TagData("DevOps & Cloud", Color(0xFFF1F5F9), Color(0xFF475569))
+                ),
+                iconType = "terminal"
+            ),
+            InternshipSearchItem(
+                id = "FRONTEND-02",
+                title = "Frontend Engineer Intern",
+                company = "INFI-TECH",
+                location = "Lilongwe",
+                workType = "Hybrid",
+                isCsSoftware = true,
+                isPaid = true,
+                deadline = "October 24, 2026",
+                tags = listOf(
+                    TagData("Hybrid", Color(0xFF99F6E4), Color(0xFF0F766E)),
+                    TagData("4 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("Web Development", Color(0xFFF1F5F9), Color(0xFF475569))
+                ),
+                iconType = "monitor"
+            ),
+            InternshipSearchItem(
+                id = "CYBER-03",
+                title = "Cybersecurity Analyst Intern",
+                company = "NITEL",
+                location = "Lilongwe",
+                workType = "On-site",
+                isCsSoftware = true,
+                isPaid = true,
+                deadline = "November 15, 2026",
+                tags = listOf(
+                    TagData("On-site", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("3 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("Information Security", Color(0xFFF1F5F9), Color(0xFF475569))
+                ),
+                iconType = "shield"
+            ),
+            InternshipSearchItem(
+                id = "DATA-04",
+                title = "Data Science & AI Intern",
+                company = "BD Tech Consulting",
+                location = "Blantyre",
+                workType = "Remote",
+                isCsSoftware = true,
+                isPaid = true,
+                deadline = "January 10, 2027",
+                tags = listOf(
+                    TagData("Remote", Color(0xFFDBEAFE), Color(0xFF1E40AF)),
+                    TagData("6 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("Machine Learning", Color(0xFFF1F5F9), Color(0xFF475569))
+                ),
+                iconType = "terminal"
+            ),
+            InternshipSearchItem(
+                id = "BUSINESS-05",
+                title = "Business Systems Analyst Intern",
+                company = "National Bank of Malawi",
+                location = "Blantyre",
+                workType = "On-site",
+                isCsSoftware = false,
+                isPaid = false,
+                deadline = "November 30, 2026",
+                tags = listOf(
+                    TagData("On-site", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("3 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
+                    TagData("Unpaid Academic", Color(0xFFF1F5F9), Color(0xFF475569))
+                ),
+                iconType = "monitor"
+            )
+        )
+    }
+
+    // Reactive Filtered Results
+    val filteredListings = remember(searchQuery, filterCsSoftware, filterRemoteHybrid, filterPaidOnly) {
+        allListings.filter { item ->
+            val matchesQuery = searchQuery.isBlank() ||
+                    item.title.contains(searchQuery, ignoreCase = true) ||
+                    item.company.contains(searchQuery, ignoreCase = true) ||
+                    item.location.contains(searchQuery, ignoreCase = true)
+
+            val matchesCs = !filterCsSoftware || item.isCsSoftware
+            val matchesWorkType = !filterRemoteHybrid || (item.workType == "Hybrid" || item.workType == "Remote")
+            val matchesPaid = !filterPaidOnly || item.isPaid
+
+            matchesQuery && matchesCs && matchesWorkType && matchesPaid
+        }
+    }
 
     Box(
         modifier = modifier
@@ -183,7 +309,7 @@ fun StudentSearchScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 3. Filter Chips Row
+                // 3. Filter Chips Row (Interactive Buttons)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -191,47 +317,68 @@ fun StudentSearchScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Chip 1: Filters (3)
+                    // Chip 1: Filters Toggle Button
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Color(0xFF0F2C59)
+                        color = if (activeFilterCount > 0) Color(0xFF0F2C59) else Color.White,
+                        border = BorderStroke(1.dp, if (activeFilterCount > 0) Color(0xFF0F2C59) else Color(0xFFCBD5E1)),
+                        modifier = Modifier.clickable {
+                            if (activeFilterCount > 0) {
+                                // Clear all filters
+                                filterCsSoftware = false
+                                filterRemoteHybrid = false
+                                filterPaidOnly = false
+                            } else {
+                                // Reset all filters back ON
+                                filterCsSoftware = true
+                                filterRemoteHybrid = true
+                                filterPaidOnly = true
+                            }
+                        }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FilterIcon(modifier = Modifier.size(15.dp), tint = Color.White)
+                            FilterIcon(
+                                modifier = Modifier.size(15.dp),
+                                tint = if (activeFilterCount > 0) Color.White else Color(0xFF334155)
+                            )
                             Text(
                                 text = "Filters",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = if (activeFilterCount > 0) Color.White else Color(0xFF334155)
                             )
                             Box(
                                 modifier = Modifier
                                     .size(18.dp)
-                                    .background(Color(0xFF38BDF8), CircleShape),
+                                    .background(
+                                        if (activeFilterCount > 0) Color(0xFF38BDF8) else Color(0xFFE2E8F0),
+                                        CircleShape
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "3",
+                                    text = "$activeFilterCount",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F2C59)
+                                    color = if (activeFilterCount > 0) Color(0xFF0F2C59) else Color(0xFF475569)
                                 )
                             }
                         }
                     }
 
-                    // Chip 2: CS & Software [x]
+                    // Chip 2: CS & Software
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFF1E3A8A))
+                        color = if (filterCsSoftware) Color(0xFF0F2C59) else Color.White,
+                        border = BorderStroke(1.dp, if (filterCsSoftware) Color(0xFF0F2C59) else Color(0xFFCBD5E1)),
+                        modifier = Modifier.clickable { filterCsSoftware = !filterCsSoftware }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -239,29 +386,35 @@ fun StudentSearchScreen(
                                 text = "CS & Software",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E3A8A)
+                                color = if (filterCsSoftware) Color.White else Color(0xFF334155)
                             )
-                            ClearIcon(modifier = Modifier.size(11.dp), tint = Color(0xFF1E3A8A))
+                            if (filterCsSoftware) {
+                                ClearIcon(modifier = Modifier.size(11.dp), tint = Color.White)
+                            }
                         }
                     }
 
                     // Chip 3: Remote & Hybrid
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Color(0xFFEFF6FF),
-                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                        color = if (filterRemoteHybrid) Color(0xFFEFF6FF) else Color.White,
+                        border = BorderStroke(1.dp, if (filterRemoteHybrid) Color(0xFF3B82F6) else Color(0xFFCBD5E1)),
+                        modifier = Modifier.clickable { filterRemoteHybrid = !filterRemoteHybrid }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            SignalIcon(modifier = Modifier.size(13.dp), tint = Color(0xFF0F766E))
+                            SignalIcon(
+                                modifier = Modifier.size(13.dp),
+                                tint = if (filterRemoteHybrid) Color(0xFF0F766E) else Color(0xFF64748B)
+                            )
                             Text(
                                 text = "Remote & Hybrid",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E3A8A)
+                                color = if (filterRemoteHybrid) Color(0xFF1E3A8A) else Color(0xFF334155)
                             )
                         }
                     }
@@ -269,22 +422,24 @@ fun StudentSearchScreen(
                     // Chip 4: Paid Only
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Color(0xFFCCFBF1),
-                        border = BorderStroke(1.dp, Color(0xFF99F6E4))
+                        color = if (filterPaidOnly) Color(0xFFCCFBF1) else Color.White,
+                        border = BorderStroke(1.dp, if (filterPaidOnly) Color(0xFF0D9488) else Color(0xFFCBD5E1)),
+                        modifier = Modifier.clickable { filterPaidOnly = !filterPaidOnly }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "Paid Only",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F766E)
+                                color = if (filterPaidOnly) Color(0xFF0F766E) else Color(0xFF334155)
                             )
                         }
                     }
                 }
+
                 Spacer(modifier = Modifier.height(18.dp))
 
                 // 4. Results Header Row
@@ -301,7 +456,7 @@ fun StudentSearchScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Showing 28 verified internships",
+                            text = "Showing ${filteredListings.size} verified internships",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF334155)
@@ -324,55 +479,75 @@ fun StudentSearchScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 5. Result Card 1: Cloud Infrastructure Intern
-                SearchResultCard(
-                    title = "Cloud Infrastructure Intern",
-                    company = "Sparc Systems",
-                    location = "Lilongwe",
-                    tags = listOf(
-                        TagData("Hybrid", Color(0xFF99F6E4), Color(0xFF0F766E)),
-                        TagData("3 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
-                        TagData("5 days left", Color(0xFFFEE2E2), Color(0xFFDC2626), showClock = true),
-                        TagData("DevOps & Cloud", Color(0xFFF1F5F9), Color(0xFF475569))
-                    ),
-                    deadline = "December 20, 2026",
-                    icon = { TerminalIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF1E3A8A)) },
-                    onApplyClick = { onApplyClick("Cloud Infrastructure Intern") }
-                )
+                // 5. Filtered Search Results
+                if (filteredListings.isEmpty()) {
+                    // Empty Filtered State
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No internships found matching selected filters.",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Try adjusting your filters or clearing search queries.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    searchQuery = ""
+                                    filterCsSoftware = false
+                                    filterRemoteHybrid = false
+                                    filterPaidOnly = false
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    text = "Reset All Filters",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F2C59)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    filteredListings.forEachIndexed { index, item ->
+                        SearchResultCard(
+                            title = item.title,
+                            company = item.company,
+                            location = item.location,
+                            tags = item.tags,
+                            deadline = item.deadline,
+                            icon = {
+                                when (item.iconType) {
+                                    "terminal" -> TerminalIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF1E3A8A))
+                                    "monitor" -> MonitorIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF0F766E))
+                                    else -> ShieldIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF1E3A8A))
+                                }
+                            },
+                            onApplyClick = { onApplyClick(item.title) }
+                        )
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Result Card 2: Frontend Engineer Intern
-                SearchResultCard(
-                    title = "Frontend Engineer Intern",
-                    company = "INFI-TECH",
-                    location = "Lilongwe",
-                    tags = listOf(
-                        TagData("Hybrid", Color(0xFF99F6E4), Color(0xFF0F766E)),
-                        TagData("4 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
-                        TagData("Web Development", Color(0xFFF1F5F9), Color(0xFF475569))
-                    ),
-                    deadline = "October 24, 2026",
-                    icon = { MonitorIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF0F766E)) },
-                    onApplyClick = { onApplyClick("Frontend Engineer Intern") }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Result Card 3: Cybersecurity Analyst Intern
-                SearchResultCard(
-                    title = "Cybersecurity Analyst Intern",
-                    company = "NITEL",
-                    location = "Lilongwe",
-                    tags = listOf(
-                        TagData("On-site", Color(0xFFE0E7FF), Color(0xFF4338CA)),
-                        TagData("3 Months", Color(0xFFE0E7FF), Color(0xFF4338CA)),
-                        TagData("Information Security", Color(0xFFF1F5F9), Color(0xFF475569))
-                    ),
-                    deadline = "November 15, 2026",
-                    icon = { ShieldIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF1E3A8A)) },
-                    onApplyClick = { onApplyClick("Cybersecurity Analyst Intern") }
-                )
+                        if (index < filteredListings.size - 1) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
             }

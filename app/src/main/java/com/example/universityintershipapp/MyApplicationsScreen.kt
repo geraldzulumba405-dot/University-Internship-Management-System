@@ -77,7 +77,7 @@ fun MyApplicationsScreen(
     onPrepInterview: (String) -> Unit = {}
 ) {
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
-    val filterTabs = listOf("All 4", "Under Review 2", "Interview 1", "Offered")
+    val filterTabs = listOf("All 4", "Under Review 2", "Interview 1", "Offered 1")
 
     Box(
         modifier = modifier
@@ -157,7 +157,8 @@ fun MyApplicationsScreen(
                         icon = { SendIcon(modifier = Modifier.size(14.dp), tint = NavyPrimary) },
                         iconColor = NavyPrimary,
                         borderColor = OutlineVariant,
-                        bgColor = CardBackground
+                        bgColor = CardBackground,
+                        onClick = { selectedFilterIndex = 0 }
                     )
 
                     // Active Metric
@@ -169,7 +170,8 @@ fun MyApplicationsScreen(
                         icon = { CalendarIcon(modifier = Modifier.size(14.dp), tint = TealPrimary) },
                         iconColor = TealPrimary,
                         borderColor = OutlineVariant,
-                        bgColor = CardBackground
+                        bgColor = CardBackground,
+                        onClick = { selectedFilterIndex = 1 }
                     )
 
                     // Action Urgent Metric
@@ -181,7 +183,8 @@ fun MyApplicationsScreen(
                         icon = { WarningIcon(modifier = Modifier.size(14.dp), tint = RedAlert) },
                         iconColor = RedAlert,
                         borderColor = RedAlertBorder,
-                        bgColor = RedAlertLight
+                        bgColor = RedAlertLight,
+                        onClick = { selectedFilterIndex = 2 }
                     )
                 }
 
@@ -215,324 +218,574 @@ fun MyApplicationsScreen(
                     }
                 }
 
-                // 3. Featured Card: Software Engineering Intern (Stage 3 of 4)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = BorderStroke(1.dp, OutlineVariant)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
+                // --- DYNAMICALLY FILTERED APPLICATION CARDS ---
+
+                // CARD 1: Interview Stage (Software Engineering Intern) -> Show when All (0) or Interview (2) selected
+                if (selectedFilterIndex == 0 || selectedFilterIndex == 2) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, OutlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(46.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(LightNavyContainer),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    CodeIcon(modifier = Modifier.size(24.dp), tint = NavyPrimary)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(LightNavyContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CodeIcon(modifier = Modifier.size(24.dp), tint = NavyPrimary)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Software Engineering Int...",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "Google LLC • Mountain View, CA\n(Remote Hybrid)",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
+
+                                Surface(
+                                    color = NavyDark,
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
                                     Text(
-                                        text = "Software Engineering Int...",
-                                        fontSize = 16.sp,
+                                        text = "• STAGE 3 OF 4",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Interview Scheduled Box
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = LightNavyContainer.copy(alpha = 0.5f),
+                                border = BorderStroke(1.dp, OutlineVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        CalendarIcon(modifier = Modifier.size(18.dp), tint = TealPrimary)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Interview Scheduled",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NavyPrimary
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Date: June 14, 2025 at 2:00 PM CAT (Google Meet)",
+                                        fontSize = 12.sp,
                                         color = TextPrimary
                                     )
-                                    Text(
-                                        text = "Google LLC • Mountain View, CA\n(Remote Hybrid)",
-                                        fontSize = 12.sp,
-                                        color = TextSecondary,
-                                        lineHeight = 16.sp
-                                    )
                                 }
                             }
 
-                            Surface(
-                                color = NavyDark,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = "• STAGE 3 OF 4",
-                                    color = Color.White,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
+                            Spacer(modifier = Modifier.height(14.dp))
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Interview Scheduled Box
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = LightNavyContainer.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, OutlineVariant)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CalendarIcon(modifier = Modifier.size(18.dp), tint = TealPrimary)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Interview Scheduled",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyPrimary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "Date: June 14, 2025 at 2:00 PM CAT (Google Meet)",
-                                    fontSize = 12.sp,
-                                    color = TextPrimary
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Multi-step lifecycle status bar
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            StepIndicator(text = "Applied", isDone = true)
-                            StepIndicator(text = "Review", isDone = true)
-                            Surface(
-                                color = LightNavyContainer,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = "Interview",
-                                    color = NavyPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                            StepIndicator(text = "Decision", isDone = false)
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        // Segmented color bar
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                        ) {
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(TealPrimary))
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(TealPrimary))
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(NavyDark))
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(LightNavyContainer))
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Placement Approval Badge
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, OutlineVariant)
-                        ) {
+                            // Multi-step lifecycle status bar
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    ShieldIcon(modifier = Modifier.size(16.dp), tint = TealPrimary)
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                StepIndicator(text = "Applied", isDone = true)
+                                StepIndicator(text = "Review", isDone = true)
+                                Surface(
+                                    color = LightNavyContainer,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
                                     Text(
-                                        text = "Prof. Banda approved placement",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = TealPrimary
+                                        text = "Interview",
+                                        color = NavyPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
-                                Text(
-                                    text = "App ID: #UNI-8842",
-                                    fontSize = 11.sp,
-                                    color = TextSecondary
-                                )
+                                StepIndicator(text = "Decision", isDone = false)
                             }
-                        }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
-                        // Dual Actions: View Details & Prep Interview
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { onViewDetails("UNI-8842") },
+                            // Segmented color bar
+                            Row(
                                 modifier = Modifier
-                                    .weight(1.1f)
-                                    .height(46.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                            ) {
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(TealPrimary))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(TealPrimary))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(NavyDark))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(LightNavyContainer))
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Placement Approval Badge
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, OutlineVariant)
                             ) {
-                                VisibilityIcon(modifier = Modifier.size(16.dp), tint = NavyPrimary)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "View Details",
-                                    fontSize = 13.sp,
-                                    color = NavyPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        ShieldIcon(modifier = Modifier.size(16.dp), tint = TealPrimary)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Prof. Banda approved placement",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = TealPrimary
+                                        )
+                                    }
+                                    Text(
+                                        text = "App ID: #UNI-8842",
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                }
                             }
-                            Button(
-                                onClick = { onPrepInterview("UNI-8842") },
-                                modifier = Modifier
-                                    .weight(1.1f)
-                                    .height(46.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = NavyDark)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Dual Actions: View Details & Prep Interview
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                VideocamIcon(modifier = Modifier.size(18.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Prep Interview",
-                                    fontSize = 13.sp,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                OutlinedButton(
+                                    onClick = { onViewDetails("UNI-8842") },
+                                    modifier = Modifier
+                                        .weight(1.1f)
+                                        .height(46.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, OutlineVariant)
+                                ) {
+                                    VisibilityIcon(modifier = Modifier.size(16.dp), tint = NavyPrimary)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "View Details",
+                                        fontSize = 13.sp,
+                                        color = NavyPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Button(
+                                    onClick = { onPrepInterview("UNI-8842") },
+                                    modifier = Modifier
+                                        .weight(1.1f)
+                                        .height(46.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = NavyDark)
+                                ) {
+                                    VideocamIcon(modifier = Modifier.size(18.dp), tint = Color.White)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Prep Interview",
+                                        fontSize = 13.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
-                // 4. Card 2: Data Science & AI Intern (Under Review)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = BorderStroke(1.dp, OutlineVariant)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Row(modifier = Modifier.weight(1f)) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(46.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(LightNavyContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    BarChartIcon(modifier = Modifier.size(24.dp), tint = TealPrimary)
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "Data Science & AI Intern",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextPrimary
-                                    )
-                                    Text(
-                                        text = "BD Tech Consulting • Zomba",
-                                        fontSize = 12.sp,
-                                        color = TextSecondary
-                                    )
-                                }
-                            }
-                            Surface(
-                                color = LightNavyContainer,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = "Under Review",
-                                    color = NavyPrimary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Candidate Screening (50%)",
-                                fontSize = 12.sp,
-                                color = TextSecondary
-                            )
-                            Text(
-                                text = "HR Assessment",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = NavyPrimary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        LinearProgressIndicator(
-                            progress = { 0.5f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(3.dp)),
-                            color = TealPrimary,
-                            trackColor = LightNavyContainer
-                        )
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        HorizontalDivider(color = OutlineVariant, thickness = 0.5.dp)
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "🕒 Sent: May 10, 2025",
-                                fontSize = 11.sp,
-                                color = TextSecondary
-                            )
+                // CARD 2: Under Review 1 (Data Science & AI Intern) -> Show when All (0) or Under Review (1) selected
+                if (selectedFilterIndex == 0 || selectedFilterIndex == 1) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, OutlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { onViewDetails("DS-AI-01") }
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Row(modifier = Modifier.weight(1f)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(LightNavyContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        BarChartIcon(modifier = Modifier.size(24.dp), tint = TealPrimary)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Data Science & AI Intern",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "BD Tech Consulting • Zomba",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    color = LightNavyContainer,
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "Under Review",
+                                        color = NavyPrimary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Review Details",
+                                    text = "Candidate Screening (50%)",
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = "HR Assessment",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = NavyPrimary
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                RightArrowIcon(modifier = Modifier.size(13.dp), tint = NavyPrimary)
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            LinearProgressIndicator(
+                                progress = { 0.5f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = TealPrimary,
+                                trackColor = LightNavyContainer
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            HorizontalDivider(color = OutlineVariant, thickness = 0.5.dp)
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🕒 Sent: May 10, 2025",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { onViewDetails("DS-AI-01") }
+                                ) {
+                                    Text(
+                                        text = "Review Details",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NavyPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    RightArrowIcon(modifier = Modifier.size(13.dp), tint = NavyPrimary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // CARD 3: Under Review 2 (Frontend UI/UX Intern) -> Show when All (0) or Under Review (1) selected
+                if (selectedFilterIndex == 0 || selectedFilterIndex == 1) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, OutlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Row(modifier = Modifier.weight(1f)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(LightNavyContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CodeIcon(modifier = Modifier.size(24.dp), tint = TealPrimary)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Frontend UI/UX Design Intern",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "EcoNet Wireless • Lilongwe",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    color = LightNavyContainer,
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "Under Review",
+                                        color = NavyPrimary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Portfolio Review (25%)",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = "Application Received",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = NavyPrimary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            LinearProgressIndicator(
+                                progress = { 0.25f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = TealPrimary,
+                                trackColor = LightNavyContainer
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            HorizontalDivider(color = OutlineVariant, thickness = 0.5.dp)
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🕒 Sent: May 14, 2025",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { onViewDetails("UI-UX-02") }
+                                ) {
+                                    Text(
+                                        text = "Review Details",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NavyPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    RightArrowIcon(modifier = Modifier.size(13.dp), tint = NavyPrimary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // CARD 4: Offered 1 (Cloud & DevOps Intern) -> Show when All (0) or Offered (3) selected
+                if (selectedFilterIndex == 0 || selectedFilterIndex == 3) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, OutlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Row(modifier = Modifier.weight(1f)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color(0xFFD1FAE5)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        SendIcon(modifier = Modifier.size(24.dp), tint = Color(0xFF047857))
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Cloud & DevOps Intern",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "MalSwitch Systems • Blantyre",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    color = Color(0xFFD1FAE5),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "Offered",
+                                        color = Color(0xFF047857),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Offer Box
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFECFDF5),
+                                border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        ShieldIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF047857))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Official Offer Received 🎉",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF047857)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Placement terms approved by HR. Please accept before June 1, 2025.",
+                                        fontSize = 12.sp,
+                                        color = TextPrimary
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Actions: Accept Offer & View Terms
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onViewDetails("DEV-OPS-03") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, OutlineVariant)
+                                ) {
+                                    Text(
+                                        text = "View Terms",
+                                        fontSize = 13.sp,
+                                        color = NavyPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Button(
+                                    onClick = { onViewDetails("DEV-OPS-03") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF047857))
+                                ) {
+                                    Text(
+                                        text = "Accept Offer",
+                                        fontSize = 13.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
@@ -613,10 +866,11 @@ private fun MetricCard(
     icon: @Composable () -> Unit,
     iconColor: Color,
     borderColor: Color,
-    bgColor: Color
+    bgColor: Color,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         border = BorderStroke(1.dp, borderColor)
@@ -809,9 +1063,9 @@ fun BarChartIcon(
         val h = size.height
         val stroke = w * 0.12f
 
-        drawLine(color = tint, start = Offset(w * 0.25f, h * 0.80f), end = Offset(w * 0.25f, h * 0.50f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.50f, h * 0.80f), end = Offset(w * 0.50f, h * 0.25f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.75f, h * 0.80f), end = Offset(w * 0.75f, h * 0.38f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.25f, h * 0.50f), end = Offset(w * 0.25f, h * 0.80f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.50f, h * 0.25f), end = Offset(w * 0.50f, h * 0.80f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.75f, h * 0.38f), end = Offset(w * 0.75f, h * 0.80f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
 }
 
