@@ -961,33 +961,7 @@ fun ClockIcon(
     }
 }
 
-@Composable
-fun BriefcaseIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFF64748B)
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
 
-        val body = Path().apply {
-            moveTo(w * 0.15f, h * 0.35f)
-            lineTo(w * 0.85f, h * 0.35f)
-            lineTo(w * 0.85f, h * 0.82f)
-            lineTo(w * 0.15f, h * 0.82f)
-            close()
-        }
-        drawPath(body, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-
-        val handle = Path().apply {
-            moveTo(w * 0.38f, h * 0.35f)
-            lineTo(w * 0.38f, h * 0.20f)
-            lineTo(w * 0.62f, h * 0.20f)
-            lineTo(w * 0.62f, h * 0.35f)
-        }
-        drawPath(handle, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
 
 @Composable
 fun TrendUpIcon(

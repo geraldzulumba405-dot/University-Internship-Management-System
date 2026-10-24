@@ -789,25 +789,7 @@ fun DollarIcon(
     }
 }
 
-@Composable
-fun CheckCircleIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFF0F766E)
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
 
-        drawCircle(color = tint, radius = w * 0.42f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.09f))
-
-        val check = Path().apply {
-            moveTo(w * 0.32f, h * 0.50f)
-            lineTo(w * 0.45f, h * 0.62f)
-            lineTo(w * 0.68f, h * 0.38f)
-        }
-        drawPath(check, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
 
 @Composable
 fun MentorIcon(

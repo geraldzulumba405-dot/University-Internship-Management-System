@@ -24,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -33,7 +34,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -54,7 +57,7 @@ import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 fun LoginScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
-    onLoginSubmit: (String, String) -> Unit = { _, _ -> },
+    onLoginSubmit: (String, String, String) -> Unit = { _, _, _ -> },
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
@@ -64,6 +67,8 @@ fun LoginScreen(
     var isPasswordVisible by remember { mutableStateOf(value = false) }
     var rememberUsername by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
@@ -263,39 +268,66 @@ fun LoginScreen(
             // Log In Button
             Button(
                 onClick = {
-                    when (val res = ValidationUtils.validateLoginInput(username, password)) {
-                        is ValidationResult.Success -> {
-                            errorMessage = null
-                            onLoginSubmit(res.email, password)
-                        }
-                        is ValidationResult.Error -> {
-                            errorMessage = res.message
+                    val valRes = ValidationUtils.validateLoginInput(username, password)
+                    if (valRes is ValidationResult.Error) {
+                        errorMessage = valRes.message
+                    } else if (!isLoading) {
+                        isLoading = true
+                        errorMessage = null
+                        scope.launch {
+                            val res = AuthRepository.loginUser(username, password)
+                            isLoading = false
+                            when (res) {
+                                is AuthResult.Success -> {
+                                    onLoginSubmit(res.email, password, res.role)
+                                }
+                                is AuthResult.Error -> {
+                                    errorMessage = res.message
+                                }
+                            }
                         }
                     }
                 },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1B3B80)
+                    containerColor = Color(0xFF1B3B80),
+                    disabledContainerColor = Color(0xFF94A3B8)
                 )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.5.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Log In",
-                        fontSize = 16.sp,
+                        text = "Authenticating...",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    RightArrowIcon(
-                        modifier = Modifier.size(18.dp),
-                        tint = Color.White
-                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Log In",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        RightArrowIcon(
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White
+                        )
+                    }
                 }
             }
 

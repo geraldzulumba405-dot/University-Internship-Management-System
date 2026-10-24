@@ -144,3 +144,47 @@ fun PlusIcon(
         drawLine(color = tint, start = Offset(w * 0.2f, h * 0.5f), end = Offset(w * 0.8f, h * 0.5f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
 }
+
+@Composable
+fun BriefcaseIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = Color(0xFF1E3A8A)
+) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val rect = Path().apply {
+            moveTo(w * 0.15f, h * 0.35f)
+            lineTo(w * 0.85f, h * 0.35f)
+            lineTo(w * 0.85f, h * 0.82f)
+            lineTo(w * 0.15f, h * 0.82f)
+            close()
+        }
+        drawPath(rect, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        val handle = Path().apply {
+            moveTo(w * 0.35f, h * 0.35f)
+            lineTo(w * 0.35f, h * 0.20f)
+            lineTo(w * 0.65f, h * 0.20f)
+            lineTo(w * 0.65f, h * 0.35f)
+        }
+        drawPath(handle, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round))
+    }
+}
+
+@Composable
+fun CheckCircleIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = Color(0xFF1E3A8A)
+) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        drawCircle(color = tint, radius = w * 0.38f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.08f))
+        val check = Path().apply {
+            moveTo(w * 0.32f, h * 0.50f)
+            lineTo(w * 0.45f, h * 0.62f)
+            lineTo(w * 0.68f, h * 0.38f)
+        }
+        drawPath(check, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}

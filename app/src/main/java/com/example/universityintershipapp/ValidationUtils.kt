@@ -11,9 +11,10 @@ object ValidationUtils {
         return when {
             cleanEmail.isBlank() -> ValidationResult.Error("Please enter your email address.")
             passwordInput.isBlank() -> ValidationResult.Error("Please enter your password.")
+            cleanEmail == "admin@gmail.com" || cleanEmail == "admin@unima.ac.mw" || cleanEmail.contains("admin") -> ValidationResult.Success(cleanEmail, isEmployer = false)
             cleanEmail == "employer@company.com" || cleanEmail.contains("employer") || cleanEmail.contains("company") -> ValidationResult.Success(cleanEmail, isEmployer = true)
             cleanEmail == "student@unima.ac.mw" || cleanEmail.endsWith("@unima.ac.mw") || cleanEmail.contains("student") || cleanEmail.contains("@") -> ValidationResult.Success(cleanEmail, isEmployer = false)
-            else -> ValidationResult.Error("Unrecognized email or invalid test credentials.\nPlease use student@unima.ac.mw or employer@company.com")
+            else -> ValidationResult.Error("Unrecognized email or invalid test credentials.\nPlease use admin@gmail.com, student@unima.ac.mw, or employer@company.com")
         }
     }
 

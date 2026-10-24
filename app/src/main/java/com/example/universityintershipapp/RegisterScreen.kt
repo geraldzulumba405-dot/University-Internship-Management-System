@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -37,7 +38,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -62,8 +65,11 @@ fun RegisterScreen(
     onBackClick: () -> Unit = {},
     onLoginClick: () -> Unit = {},
     onCreateAccountSuccess: () -> Unit = {},
+    onCreateAccountSuccessWithRole: (String) -> Unit = {},
 ) {
     var accountType by remember { mutableStateOf("student") }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     // Student Form Fields
     var fullName by remember { mutableStateOf("") }
@@ -167,8 +173,45 @@ fun RegisterScreen(
     fun validateAndSubmit() {
         showErrors = true
         val isValid = if (accountType == "student") validateStudentForm() else validateEmployerForm()
-        if (isValid) {
-            onCreateAccountSuccess()
+        if (isValid && !isLoading) {
+            isLoading = true
+            scope.launch {
+                val res = if (accountType == "student") {
+                    AuthRepository.registerStudent(
+                        fullName = fullName,
+                        studentId = studentId,
+                        email = email,
+                        phoneNumber = phoneNumber,
+                        programme = programme,
+                        yearOfStudy = yearOfStudy,
+                        skills = skills,
+                        password = password
+                    )
+                } else {
+                    AuthRepository.registerEmployer(
+                        contactName = employerContactName,
+                        companyName = employerCompanyName,
+                        email = employerEmail,
+                        phoneNumber = employerPhone,
+                        sector = employerSector,
+                        location = employerLocation,
+                        website = employerWebsite,
+                        description = employerDescription,
+                        password = employerPassword
+                    )
+                }
+                isLoading = false
+                when (res) {
+                    is AuthResult.Success -> {
+                        validationErrorMsg = ""
+                        onCreateAccountSuccessWithRole(res.role)
+                        onCreateAccountSuccess()
+                    }
+                    is AuthResult.Error -> {
+                        validationErrorMsg = res.message
+                    }
+                }
+            }
         }
     }
 
@@ -530,7 +573,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = studentId,
                         onValueChange = { studentId = it },
-                        placeholder = { Text("e.g. U2021-0842", color = Color(0xFF525252), fontSize = 14.sp) },
+                        placeholder = { Text("bsc-inf-18-23", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { IdCardIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         isError = showErrors && studentId.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
@@ -547,7 +590,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        placeholder = { Text("student@unima.ac.mw", color = Color(0xFF525252), fontSize = 14.sp) },
+                        placeholder = { Text("bsc-inf-18-23@unima.ac.mw", color = Color(0xFF525252), fontSize = 14.sp) },
                         leadingIcon = { EmailIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF64748B)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         isError = showErrors && (email.isBlank() || !email.contains("@")),
@@ -753,24 +796,43 @@ fun RegisterScreen(
                 // Primary Button: Create Account
                 Button(
                     onClick = { validateAndSubmit() },
+                    enabled = !isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B3B80))
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1B3B80),
+                        disabledContainerColor = Color(0xFF94A3B8)
+                    )
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = Color.White,
+                            strokeWidth = 2.5.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Create Account",
-                            fontSize = 16.sp,
+                            text = "Creating Account...",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        RightArrowIcon(modifier = Modifier.size(18.dp), tint = Color.White)
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "Create Account",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            RightArrowIcon(modifier = Modifier.size(18.dp), tint = Color.White)
+                        }
                     }
                 }
 

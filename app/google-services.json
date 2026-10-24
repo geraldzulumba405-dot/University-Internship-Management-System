@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "462335095893",
+    "project_id": "uniintern-19581",
+    "storage_bucket": "uniintern-19581.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:462335095893:android:9d7ed8d9cf5ed82d70d0dc",
+        "android_client_info": {
+          "package_name": "com.example.universityintershipapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMU38ACR8WVpy_tLAWceiKKlxZlaK2cE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

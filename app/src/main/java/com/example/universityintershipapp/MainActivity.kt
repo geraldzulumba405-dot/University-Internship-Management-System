@@ -26,7 +26,11 @@ enum class AppScreen {
     POST_INTERNSHIP,
     EMPLOYER_APPLICATION_REVIEW,
     EMPLOYER_RECEIVED_APPLICATIONS,
-    EMPLOYER_PROFILE
+    EMPLOYER_PROFILE,
+    ADMIN_DASHBOARD,
+    ADMIN_EMPLOYERS,
+    ADMIN_INTERNSHIPS,
+    ADMIN_REPORTS
 }
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +47,8 @@ class MainActivity : ComponentActivity() {
                         AppScreen.STUDENT_SEARCH, AppScreen.STUDENT_APPLICATION, AppScreen.MY_APPLICATIONS, AppScreen.STUDENT_PROFILE -> currentScreen = AppScreen.STUDENT_HOME
                         AppScreen.EMPLOYER_HOME -> currentScreen = AppScreen.LOGIN
                         AppScreen.POST_INTERNSHIP, AppScreen.EMPLOYER_RECEIVED_APPLICATIONS, AppScreen.EMPLOYER_APPLICATION_REVIEW, AppScreen.EMPLOYER_PROFILE -> currentScreen = AppScreen.EMPLOYER_HOME
+                        AppScreen.ADMIN_DASHBOARD -> currentScreen = AppScreen.LOGIN
+                        AppScreen.ADMIN_EMPLOYERS, AppScreen.ADMIN_INTERNSHIPS, AppScreen.ADMIN_REPORTS -> currentScreen = AppScreen.ADMIN_DASHBOARD
                         AppScreen.SUBMIT_APPLICATION -> currentScreen = AppScreen.STUDENT_APPLICATION
                         AppScreen.APPLICATION_CONFIRMATION -> currentScreen = AppScreen.MY_APPLICATIONS
                         else -> currentScreen = AppScreen.LOGIN
@@ -60,9 +66,11 @@ class MainActivity : ComponentActivity() {
                     AppScreen.LOGIN -> {
                         LoginScreen(
                             onBackClick = {},
-                            onLoginSubmit = { email, _ ->
+                            onLoginSubmit = { email, _, role ->
                                 val cleanEmail = email.trim().lowercase()
-                                if (cleanEmail == "employer@company.com" || cleanEmail.contains("employer") || cleanEmail.contains("company")) {
+                                if (role == "admin" || cleanEmail == "admin@gmail.com" || cleanEmail.contains("admin")) {
+                                    currentScreen = AppScreen.ADMIN_DASHBOARD
+                                } else if (role == "employer" || cleanEmail == "employer@company.com" || cleanEmail.contains("employer") || cleanEmail.contains("company")) {
                                     currentScreen = AppScreen.EMPLOYER_HOME
                                 } else {
                                     currentScreen = AppScreen.STUDENT_HOME
@@ -77,7 +85,20 @@ class MainActivity : ComponentActivity() {
                         RegisterScreen(
                             onBackClick = { currentScreen = AppScreen.LOGIN },
                             onLoginClick = { currentScreen = AppScreen.LOGIN },
-                            onCreateAccountSuccess = { currentScreen = AppScreen.STUDENT_HOME }
+                            onCreateAccountSuccessWithRole = { role ->
+                                if (role == "admin") {
+                                    currentScreen = AppScreen.ADMIN_DASHBOARD
+                                } else if (role == "employer") {
+                                    currentScreen = AppScreen.EMPLOYER_HOME
+                                } else {
+                                    currentScreen = AppScreen.STUDENT_HOME
+                                }
+                            },
+                            onCreateAccountSuccess = {
+                                if (currentScreen == AppScreen.REGISTER) {
+                                    currentScreen = AppScreen.STUDENT_HOME
+                                }
+                            }
                         )
                     }
                     AppScreen.STUDENT_HOME -> {
@@ -171,6 +192,36 @@ class MainActivity : ComponentActivity() {
                             onNavigateApplications = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateProfile = { currentScreen = AppScreen.EMPLOYER_PROFILE },
                             onLogOutClick = { currentScreen = AppScreen.LOGIN }
+                        )
+                    }
+                    AppScreen.ADMIN_DASHBOARD -> {
+                        AdminDashboardScreen(
+                            onNavigateEmployers = { currentScreen = AppScreen.ADMIN_EMPLOYERS },
+                            onNavigateInternships = { currentScreen = AppScreen.ADMIN_INTERNSHIPS },
+                            onNavigateReports = { currentScreen = AppScreen.ADMIN_REPORTS },
+                            onLogOut = { currentScreen = AppScreen.LOGIN }
+                        )
+                    }
+                    AppScreen.ADMIN_EMPLOYERS -> {
+                        AdminEmployerManagementScreen(
+                            onNavigateDashboard = { currentScreen = AppScreen.ADMIN_DASHBOARD },
+                            onNavigateInternships = { currentScreen = AppScreen.ADMIN_INTERNSHIPS },
+                            onNavigateReports = { currentScreen = AppScreen.ADMIN_REPORTS }
+                        )
+                    }
+                    AppScreen.ADMIN_INTERNSHIPS -> {
+                        AdminInternshipManagementScreen(
+                            onNavigateDashboard = { currentScreen = AppScreen.ADMIN_DASHBOARD },
+                            onNavigateEmployers = { currentScreen = AppScreen.ADMIN_EMPLOYERS },
+                            onNavigateReports = { currentScreen = AppScreen.ADMIN_REPORTS }
+                        )
+                    }
+                    AppScreen.ADMIN_REPORTS -> {
+                        AdminReportsScreen(
+                            onNavigateDashboard = { currentScreen = AppScreen.ADMIN_DASHBOARD },
+                            onNavigateEmployers = { currentScreen = AppScreen.ADMIN_EMPLOYERS },
+                            onNavigateInternships = { currentScreen = AppScreen.ADMIN_INTERNSHIPS },
+                            onLogOut = { currentScreen = AppScreen.LOGIN }
                         )
                     }
                 }
