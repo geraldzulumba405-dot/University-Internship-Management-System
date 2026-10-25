@@ -3,7 +3,6 @@ package com.example.universityintershipapp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -51,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
+private val AdminAccentBlue = Color(0xFF1E3A8A)
 private val AdminRedAlert = Color(0xFFDC2626)
 private val AdminRedAlertBg = Color(0xFFFEE2E2)
 
@@ -64,7 +63,7 @@ fun AdminReportsScreen(
 ) {
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     var selectedBottomNav by remember { mutableIntStateOf(3) }
-    val filterTabs = listOf("Reported Content (3)", "Reported Accounts (2)", "Sanctions & Bans")
+    val filterTabs = listOf("Reported Content", "Reported Accounts", "Sanctions & Bans")
 
     Box(
         modifier = modifier
@@ -74,7 +73,7 @@ fun AdminReportsScreen(
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Header Bar
+            // Header Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,7 +107,7 @@ fun AdminReportsScreen(
                 }
 
                 IconButton(onClick = onLogOut) {
-                    LogOutIcon(modifier = Modifier.size(22.dp), tint = AdminDarkNavy)
+                    LogoutIcon(modifier = Modifier.size(22.dp), tint = AdminDarkNavy)
                 }
             }
 
@@ -122,34 +121,21 @@ fun AdminReportsScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 // Title Banner
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(0xFFEFF6FF), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AdminShieldIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy)
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Column {
-                        Text(
-                            text = "Reports & User Management",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AdminDarkNavy,
-                            lineHeight = 26.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Review scam reports, investigate student flags, and enact disciplinary enforcement.",
-                            fontSize = 12.sp,
-                            color = Color(0xFF64748B),
-                            lineHeight = 16.sp
-                        )
-                    }
+                Column {
+                    Text(
+                        text = "Reports & User Management",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy,
+                        lineHeight = 26.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Review scam reports",
+                        fontSize = 12.sp,
+                        color = Color(0xFF64748B),
+                        lineHeight = 16.sp
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -186,28 +172,15 @@ fun AdminReportsScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Active Case File Header
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).background(AdminRedAlert, CircleShape))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "ACTIVE CASE FILE 1 OF 3",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy,
-                        letterSpacing = 0.5.sp
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
 
-                // Primary Active Case Card
+                // Case File Card
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
                     color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                    shadowElevation = 1.dp
+                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Row(
@@ -221,43 +194,50 @@ fun AdminReportsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF475569)
                             )
+                        }
 
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = AdminRedAlertBg
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Warning Badge
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = AdminRedAlertBg
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    AlertTriangleIcon(modifier = Modifier.size(13.dp), tint = AdminRedAlert)
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Text(
-                                        text = "Scam Suspicion / Advance Fee Request",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AdminRedAlert
-                                    )
-                                }
+                                WarningTriangleIcon(modifier = Modifier.size(16.dp), tint = AdminRedAlert)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Scam Suspicion / Advance Fee Request",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AdminRedAlert
+                                )
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Reported Listing Details Box
+                        // Reported Listing section
                         Text(
                             text = "REPORTED LISTING",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF64748B)
+                            color = Color(0xFF64748B),
+                            letterSpacing = 0.5.sp
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFEFF6FF),
-                            border = BorderStroke(1.dp, Color(0xFFDBEAFE))
+                            color = Color(0xFFF8FAFC),
+                            border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
@@ -266,13 +246,47 @@ fun AdminReportsScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = AdminDarkNavy
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                HorizontalDivider(color = Color(0xFFE2E8F0))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "MWK 400,000/mo",
+                                    text = "FastTrack Global Ventures",
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F766E)
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF334155)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Student Evidence & Deposition section
+                        Text(
+                            text = "STUDENT EVIDENCE & DEPOSITION",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF64748B),
+                            letterSpacing = 0.5.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFFFBEB),
+                            border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    text = "\"Employer requested MWK 15,000 processing and interview fee via Airtel Money before issuing contract portal login credentials.\"",
+                                    fontSize = 13.sp,
+                                    color = AdminDarkNavy,
+                                    lineHeight = 18.sp
                                 )
 
+                                Spacer(modifier = Modifier.height(10.dp))
+                                HorizontalDivider(color = Color(0xFFFEE2E2))
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Row(
@@ -281,156 +295,79 @@ fun AdminReportsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        BuildingIcon(modifier = Modifier.size(15.dp), tint = AdminDarkNavy)
-                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = "FastTrack Global Ventures",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = AdminDarkNavy
+                                            text = "Transaction Ref: ",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF64748B)
                                         )
-                                    }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(50),
-                                        color = AdminRedAlertBg
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = Color.White,
+                                            border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
                                         ) {
-                                            AdminShieldIcon(modifier = Modifier.size(12.dp), tint = AdminRedAlert)
-                                            Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                text = "Unverified Employer",
-                                                fontSize = 10.sp,
+                                                text = "AM-8829-019",
+                                                fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = AdminRedAlert
+                                                color = AdminDarkNavy,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
                                     }
-                                }
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Student Evidence & Deposition Box
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "STUDENT EVIDENCE & DEPOSITION",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF64748B)
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                FlagIcon(modifier = Modifier.size(13.dp), tint = Color(0xFFB45309))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "4 Student Reports Filed",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFB45309)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = AdminRedAlertBg.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, Color(0xFFFECACA))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = "\"Employer requested MWK 15,000 processing and interview fee via Airtel Money before issuing contract portal login credentials.\"",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF991B1B),
-                                    lineHeight = 17.sp
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                HorizontalDivider(color = Color(0xFFFECACA), thickness = 0.5.dp)
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Transaction Ref: AM-8829-019",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF991B1B)
-                                    )
                                     Text(
                                         text = "Oct 25, 2024",
                                         fontSize = 11.sp,
-                                        color = Color(0xFF991B1B)
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF64748B)
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                        // Enforcement Action Buttons
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        // Action Buttons
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(
                                 onClick = {},
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(42.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CloseIcon(modifier = Modifier.size(15.dp), tint = AdminDarkNavy)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = "Dismiss Report", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                                }
+                                DismissIcon(modifier = Modifier.size(16.dp), tint = AdminDarkNavy)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Dismiss Report", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
                             }
 
                             OutlinedButton(
                                 onClick = {},
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(42.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(containerColor = AdminRedAlertBg),
-                                border = BorderStroke(1.dp, Color(0xFFFECACA))
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color(0xFFFECACA)),
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = AdminRedAlertBg)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    TrashIcon(modifier = Modifier.size(15.dp), tint = AdminRedAlert)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = "Remove Content", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminRedAlert)
-                                }
+                                TrashIcon(modifier = Modifier.size(16.dp), tint = AdminRedAlert)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Remove Content", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminRedAlert)
                             }
 
                             Button(
                                 onClick = {},
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(10.dp),
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = AdminRedAlert)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    BanIcon(modifier = Modifier.size(16.dp), tint = Color.White)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = "Suspend Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
+                                BanIcon(modifier = Modifier.size(18.dp), tint = Color.White)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Suspend Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -439,207 +376,72 @@ fun AdminReportsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Suspended Accounts & Sanctions Section
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AdminShieldIcon(modifier = Modifier.size(18.dp), tint = AdminDarkNavy)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Suspended Accounts & Sanctions",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AdminDarkNavy
-                        )
-                    }
-
-                    Text(
-                        text = "View All (2)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E3A8A),
-                        modifier = Modifier.clickable { }
-                    )
-                }
+                Text(
+                    text = "Suspended Accounts & Sanctions",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminDarkNavy
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Sanctioned Card: QuickHire Malawi
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 2.dp
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(Color(0xFFEFF6FF), RoundedCornerShape(10.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = "QH", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "QuickHire Malawi",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AdminDarkNavy
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(
-                                        shape = RoundedCornerShape(50),
-                                        color = Color(0xFFE0E7FF)
-                                    ) {
-                                        Text(
-                                            text = "Employer",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF3730A3),
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(2.dp))
-
-                                Text(
-                                    text = "Violation #892: Advance fee solicitation",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = AdminRedAlert
-                                )
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color(0xFFFEF3C7)
-                            ) {
-                                Text(
-                                    text = "Appeal Pending",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFB45309),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Sanction Enacted: Oct 20, 2024",
-                                fontSize = 11.sp,
-                                color = Color(0xFF64748B)
+                                text = "QuickHire Malawi",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AdminDarkNavy
                             )
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFDBEAFE)
+                            ) {
                                 Text(
-                                    text = "Review Dossier",
-                                    fontSize = 12.sp,
+                                    text = "Employer",
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = AdminDarkNavy
+                                    color = AdminAccentBlue,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                RightArrowIcon(modifier = Modifier.size(13.dp), tint = AdminDarkNavy)
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Activity Log Header
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    HistoryClockIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F172A))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Recent Administrative Activity Log",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .background(AdminRedAlertBg, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                BanIcon(modifier = Modifier.size(16.dp), tint = AdminRedAlert)
-                            }
-
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Column {
-                                Row {
-                                    Text(text = "Admin Director", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                                    Text(text = " suspended QuickHire Malawi", fontSize = 13.sp, color = Color(0xFF334155), lineHeight = 18.sp)
-                                }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "Yesterday • 16:42 CAT • Policy #892", fontSize = 11.sp, color = Color(0xFF64748B))
                             }
                         }
 
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF1F5F9))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Violation #892: Advance fee solicitation",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AdminRedAlert
+                        )
 
-                        Row(verticalAlignment = Alignment.Top) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .background(Color(0xFFD1FAE5), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CheckCircleIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF047857))
-                            }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Column {
-                                Row {
-                                    Text(text = "Dismissed false report ", fontSize = 13.sp, color = Color(0xFF334155), lineHeight = 18.sp)
-                                    Text(text = "#REP-2024-039", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                                    Text(text = " on Airtel Malawi", fontSize = 13.sp, color = Color(0xFF334155), lineHeight = 18.sp)
-                                }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = "2 days ago • By Senior Registrar • Audited", fontSize = 11.sp, color = Color(0xFF64748B))
-                            }
-                        }
+                        Text(
+                            text = "Sanction Enacted: Oct 20, 2024",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B)
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Bottom Navigation
+            // Bottom Navigation Bar
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
 
             Row(
@@ -691,81 +493,60 @@ fun AdminReportsScreen(
     }
 }
 
+
+
 @Composable
-fun AlertTriangleIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminRedAlert
-) {
+fun WarningTriangleIcon(modifier: Modifier = Modifier, tint: Color = AdminRedAlert) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val tri = Path().apply {
-            moveTo(w * 0.50f, h * 0.15f)
-            lineTo(w * 0.88f, h * 0.85f)
-            lineTo(w * 0.12f, h * 0.85f)
+        val triangle = Path().apply {
+            moveTo(w * 0.5f, h * 0.1f)
+            lineTo(w * 0.92f, h * 0.88f)
+            lineTo(w * 0.08f, h * 0.88f)
             close()
         }
-        drawPath(tri, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(triangle, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         drawLine(color = tint, start = Offset(w * 0.5f, h * 0.38f), end = Offset(w * 0.5f, h * 0.60f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
-        drawCircle(color = tint, radius = w * 0.045f, center = Offset(w * 0.5f, h * 0.72f))
+        drawCircle(color = tint, radius = w * 0.05f, center = Offset(w * 0.5f, h * 0.74f))
     }
 }
 
 @Composable
-fun TrashIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminRedAlert
-) {
+fun DismissIcon(modifier: Modifier = Modifier, tint: Color = AdminDarkNavy) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.28f), end = Offset(w * 0.85f, h * 0.28f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.2f, h * 0.2f), end = Offset(w * 0.8f, h * 0.8f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.8f, h * 0.2f), end = Offset(w * 0.2f, h * 0.8f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
+    }
+}
+
+@Composable
+fun TrashIcon(modifier: Modifier = Modifier, tint: Color = AdminRedAlert) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.25f), end = Offset(w * 0.85f, h * 0.25f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
         val bin = Path().apply {
-            moveTo(w * 0.25f, h * 0.28f)
-            lineTo(w * 0.30f, h * 0.82f)
-            lineTo(w * 0.70f, h * 0.82f)
-            lineTo(w * 0.75f, h * 0.28f)
+            moveTo(w * 0.3f, h * 0.25f)
+            lineTo(w * 0.35f, h * 0.88f)
+            lineTo(w * 0.65f, h * 0.88f)
+            lineTo(w * 0.7f, h * 0.25f)
         }
         drawPath(bin, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawLine(color = tint, start = Offset(w * 0.45f, h * 0.40f), end = Offset(w * 0.45f, h * 0.72f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.55f, h * 0.40f), end = Offset(w * 0.55f, h * 0.72f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
     }
 }
 
 @Composable
-fun BanIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminRedAlert
-) {
+fun BanIcon(modifier: Modifier = Modifier, tint: Color = Color.White) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        drawCircle(color = tint, radius = w * 0.38f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.09f))
-        drawLine(color = tint, start = Offset(w * 0.24f, h * 0.76f), end = Offset(w * 0.76f, h * 0.24f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
-    }
-}
-
-@Composable
-fun LogOutIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminDarkNavy
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val box = Path().apply {
-            moveTo(w * 0.55f, h * 0.20f)
-            lineTo(w * 0.20f, h * 0.20f)
-            lineTo(w * 0.20f, h * 0.80f)
-            lineTo(w * 0.55f, h * 0.80f)
-        }
-        drawPath(box, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        val arrow = Path().apply {
-            moveTo(w * 0.42f, h * 0.50f)
-            lineTo(w * 0.82f, h * 0.50f)
-            moveTo(w * 0.65f, h * 0.35f)
-            lineTo(w * 0.85f, h * 0.50f)
-            lineTo(w * 0.65f, h * 0.65f)
-        }
-        drawPath(arrow, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(color = tint, radius = w * 0.4f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.1f))
+        drawLine(color = tint, start = Offset(w * 0.22f, h * 0.78f), end = Offset(w * 0.78f, h * 0.22f), strokeWidth = w * 0.1f, cap = StrokeCap.Round)
     }
 }
 

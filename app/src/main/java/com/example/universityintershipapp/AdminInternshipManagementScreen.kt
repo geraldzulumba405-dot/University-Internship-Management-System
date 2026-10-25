@@ -47,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -73,7 +72,7 @@ fun AdminInternshipManagementScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     var selectedBottomNav by remember { mutableIntStateOf(2) }
-    val filterTabs = listOf("Pending Review 9", "Published 34", "Rejected 3", "All 46")
+    val filterTabs = listOf("Pending Review", "Published", "Rejected", "All")
 
     Box(
         modifier = modifier
@@ -83,48 +82,51 @@ fun AdminInternshipManagementScreen(
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Header Bar
+            // Header Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable { onNavigateDashboard() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    BackArrowIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy)
-                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clickable { onNavigateDashboard() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BackArrowIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy)
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(AdminDarkNavy, RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AdminShieldIcon(modifier = Modifier.size(20.dp), tint = Color.White)
-                }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(AdminDarkNavy, RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AdminShieldIcon(modifier = Modifier.size(20.dp), tint = Color.White)
+                    }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Internship Management",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy
-                    )
-                    Text(
-                        text = "UNIMA Moderation Queue • UniIntern Admin",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF475569)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Internship Management",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AdminDarkNavy
+                        )
+                        Text(
+                            text = "UNIMA Moderation Queue • UniIntern Admin",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF475569)
+                        )
+                    }
                 }
 
                 Box(modifier = Modifier.padding(end = 4.dp)) {
@@ -156,9 +158,9 @@ fun AdminInternshipManagementScreen(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy),
-                    placeholder = { Text("Search title or company name", color = Color(0xFF64748B), fontSize = 13.sp) },
+                    placeholder = { Text("Search title or company name.", color = Color(0xFF64748B), fontSize = 13.sp) },
                     leadingIcon = { SearchNavIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy) },
-                    trailingIcon = { SlidersFilterIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B)) },
+                    trailingIcon = { FilterIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
@@ -204,21 +206,20 @@ fun AdminInternshipManagementScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Primary Moderation Card
+                // Primary Moderation Card (Junior Network & Systems Administrator Intern)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
                     color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                    shadowElevation = 1.dp
+                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Row(verticalAlignment = Alignment.Top) {
                             Box(
                                 modifier = Modifier
                                     .size(52.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFFEFF6FF)),
+                                    .background(Color(0xFFEFF6FF), RoundedCornerShape(14.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 BuildingIcon(modifier = Modifier.size(28.dp), tint = AdminAccentBlue)
@@ -227,216 +228,189 @@ fun AdminInternshipManagementScreen(
                             Spacer(modifier = Modifier.width(14.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = Color(0xFFFEF3C7)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(modifier = Modifier.size(6.dp).background(Color(0xFFD97706), CircleShape))
-                                        Spacer(modifier = Modifier.width(5.dp))
-                                        Text(
-                                            text = "PENDING REVIEW",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFB45309)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
                                 Text(
                                     text = "Junior Network & Systems Administrator Intern",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = AdminDarkNavy,
-                                    lineHeight = 21.sp
+                                    lineHeight = 22.sp
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
                                     text = "Telekom Networks Malawi (TNM Plc)",
                                     fontSize = 13.sp,
-                                    color = Color(0xFF475569)
+                                    fontWeight = FontWeight.Medium,
+                                    color = AdminAccentBlue
                                 )
                             }
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Grid Specs
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
+                        // Meta details
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(text = "📍 Blantyre / Lilongwe", fontSize = 12.sp, color = Color(0xFF334155))
-                                Text(text = "⏱ Full-time (6 Months)", fontSize = 12.sp, color = Color(0xFF334155))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    LocationPinIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Blantyre / Lilongwe",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF334155)
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    DurationClockIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Full-time (6 Months)",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF334155)
+                                    )
+                                }
                             }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(text = "💵 MWK 250,000 / mo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                                Text(text = "📅 Closes Nov 30, 2024", fontSize = 12.sp, color = Color(0xFF64748B))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Closes Nov 30, 2024",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+                                Text(
+                                    text = "MWK 250,000 / mo",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AdminDarkNavy
+                                )
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            HistoryClockIcon(modifier = Modifier.size(15.dp), tint = Color(0xFF64748B))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "🕒 Submitted Oct 25, 2024 by TNM Human Capital Directorate",
+                                text = "Submitted Oct 25, 2024 by TNM Human Capital Directorate",
                                 fontSize = 11.sp,
                                 color = Color(0xFF64748B)
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Academic Vetting Section Box
+                        // Scope & Description Box
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFEFF6FF),
-                            border = BorderStroke(1.dp, Color(0xFFDBEAFE))
+                            color = Color(0xFFF8FAFC),
+                            border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    GraduationCapIcon(modifier = Modifier.size(16.dp), tint = AdminAccentBlue)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "UNIMA ACADEMIC CRITERIA VETTING",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AdminAccentBlue
-                                    )
-                                }
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    text = "SCOPE & DESCRIPTION",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AdminDarkNavy,
+                                    letterSpacing = 0.5.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = "The candidate will assist TNM senior network engineers in monitoring telecommunications switches, managing campus fiber endpoints, resolving network fault escalations, and maintaining enterprise Linux servers.",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF334155),
+                                    lineHeight = 18.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Text(
+                                    text = "Verified Required Competencies",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AdminAccentBlue
+                                )
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Target Academic Cohort",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF64748B)
-                                        )
-                                        Text(
-                                            text = "UNIMA Dept of Computer Science & ICT",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = AdminDarkNavy
-                                        )
+                                    listOf("Linux SysAdmin", "Cisco Routing", "TCP/IP Subnetting", "Network Diagnostics", "Bash Scripting").forEach { comp ->
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFEFF6FF),
+                                            border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                                        ) {
+                                            Text(
+                                                text = comp,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = AdminAccentBlue,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
                                     }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = Color(0xFFD1FAE5)
-                                    ) {
-                                        Text(
-                                            text = "Eligible (Yr 3/4)",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = GreenPublish,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Description Text
-                        Text(
-                            text = "SCOPE & DESCRIPTION",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF475569)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "The candidate will assist TNM senior network engineers in monitoring telecommunications switches, managing campus fiber endpoints, resolving network fault escalations, and maintaining enterprise Linux servers.",
-                            fontSize = 12.sp,
-                            color = Color(0xFF334155),
-                            lineHeight = 17.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Competency Chips
-                        Text(
-                            text = "Verified Required Competencies",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF475569)
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            listOf("Linux SysAdmin", "Cisco Routing", "TCP/IP Subnetting", "Network Diagnostics", "Bash Scripting").forEach { tag ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0xFFEFF6FF),
-                                    border = BorderStroke(1.dp, Color(0xFFDBEAFE))
-                                ) {
-                                    Text(
-                                        text = tag,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = AdminDarkNavy,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
                                 }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        // Action Buttons: Approve & Publish | Request Changes
+                        // Action Buttons
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Button(
                                 onClick = {},
                                 modifier = Modifier
-                                    .weight(1.1f)
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(10.dp),
+                                    .weight(1f)
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = GreenPublish)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CheckCircleIcon(modifier = Modifier.size(16.dp), tint = Color.White)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = "Approve & Publish", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
+                                Text(
+                                    text = "Approve & Publish",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
                             }
 
                             OutlinedButton(
                                 onClick = {},
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, AdminDarkNavy)
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, AdminDarkNavy),
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    EditNoteIcon(modifier = Modifier.size(16.dp), tint = AdminDarkNavy)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = "Request Changes", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                                }
+                                Text(
+                                    text = "Request Changes",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AdminDarkNavy,
+                                    maxLines = 1
+                                )
                             }
                         }
                     }
@@ -444,56 +418,39 @@ fun AdminInternshipManagementScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Upcoming in Queue
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Upcoming in Queue",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
-                    )
-                    Text(
-                        text = "8 remaining",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B)
-                    )
-                }
+                // Upcoming in Queue Section
+                Text(
+                    text = "Upcoming in Queue",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminDarkNavy
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Queue Item 1
-                QueuePostingCard(
+                QueueItemCard(
                     title = "Airtel Malawi - Mobile App Dev Intern",
-                    subtitle = "Lilongwe Headquarters • B.Sc. Computing",
-                    icon = { SmartphoneIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) }
+                    subtitle = "Lilongwe Headquarters • B.Sc. Computing"
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Queue Item 2
-                QueuePostingCard(
+                QueueItemCard(
                     title = "Reserve Bank of Malawi - Financial Systems Analyst",
-                    subtitle = "Blantyre Branch • BIS / CS Year 4",
-                    icon = { BankBuildingIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) }
+                    subtitle = "Blantyre Branch • BIS / CS Year 4"
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Queue Item 3
-                QueuePostingCard(
+                QueueItemCard(
                     title = "Illovo Sugar - IT Infrastructure Intern",
-                    subtitle = "Nchalo Sugar Estate • Systems Engineering",
-                    icon = { FactoryIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) }
+                    subtitle = "Nchalo Estate • Electrical / ICT Eng"
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Bottom Navigation
+            // Bottom Navigation Bar
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
 
             Row(
@@ -546,115 +503,76 @@ fun AdminInternshipManagementScreen(
 }
 
 @Composable
-private fun QueuePostingCard(
+private fun QueueItemCard(
     title: String,
-    subtitle: String,
-    icon: @Composable () -> Unit
+    subtitle: String
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {},
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+        shadowElevation = 2.dp
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(Color(0xFFEFF6FF), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                icon()
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminDarkNavy
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B)
+                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = subtitle, fontSize = 12.sp, color = Color(0xFF64748B))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFFFEF3C7),
+                    border = BorderStroke(1.dp, Color(0xFFFCD34D))
+                ) {
+                    Text(
+                        text = "Pending",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB45309),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                RightArrowIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF64748B))
             }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = Color(0xFFFEF3C7)
-            ) {
-                Text(
-                    text = "Pending",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFB45309),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            RightArrowIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF94A3B8))
         }
     }
 }
 
 @Composable
-fun SlidersFilterIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFF64748B)
-) {
+fun DurationClockIcon(modifier: Modifier = Modifier, tint: Color = Color(0xFF334155)) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.30f), end = Offset(w * 0.85f, h * 0.30f), strokeWidth = w * 0.10f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.70f), end = Offset(w * 0.85f, h * 0.70f), strokeWidth = w * 0.10f, cap = StrokeCap.Round)
-        drawCircle(color = tint, radius = w * 0.12f, center = Offset(w * 0.38f, h * 0.30f))
-        drawCircle(color = tint, radius = w * 0.12f, center = Offset(w * 0.62f, h * 0.70f))
+        drawCircle(color = tint, radius = w * 0.38f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.08f))
+        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.5f), end = Offset(w * 0.5f, h * 0.3f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.5f), end = Offset(w * 0.65f, h * 0.5f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
     }
 }
 
-@Composable
-fun EditNoteIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminDarkNavy
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val line1 = Path().apply {
-            moveTo(w * 0.20f, h * 0.30f)
-            lineTo(w * 0.80f, h * 0.30f)
-            moveTo(w * 0.20f, h * 0.50f)
-            lineTo(w * 0.60f, h * 0.50f)
-            moveTo(w * 0.20f, h * 0.70f)
-            lineTo(w * 0.45f, h * 0.70f)
-        }
-        drawPath(line1, color = tint, style = Stroke(width = w * 0.10f, cap = StrokeCap.Round))
-    }
-}
 
-@Composable
-fun SmartphoneIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminAccentBlue
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val phone = Path().apply {
-            moveTo(w * 0.28f, h * 0.15f)
-            lineTo(w * 0.72f, h * 0.15f)
-            lineTo(w * 0.72f, h * 0.85f)
-            lineTo(w * 0.28f, h * 0.85f)
-            close()
-        }
-        drawPath(phone, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawLine(color = tint, start = Offset(w * 0.42f, h * 0.25f), end = Offset(w * 0.58f, h * 0.25f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawCircle(color = tint, radius = w * 0.05f, center = Offset(w * 0.50f, h * 0.75f))
-    }
-}
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

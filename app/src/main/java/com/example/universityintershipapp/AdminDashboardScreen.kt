@@ -41,18 +41,17 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
-private val AdminAccentBlue = Color(0xFF1E3A8A)
-private val AdminPillBadgeBg = Color(0xFFE0E7FF)
-private val AdminPillBadgeText = Color(0xFF3730A3)
 private val AdminRedAlert = Color(0xFFDC2626)
-private val AdminRedAlertBg = Color(0xFFFEE2E2)
 
 @Composable
 fun AdminDashboardScreen(
@@ -72,7 +71,7 @@ fun AdminDashboardScreen(
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Top Bar Header
+            // Top Bar Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -81,17 +80,6 @@ fun AdminDashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(AdminDarkNavy, RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AdminShieldIcon(modifier = Modifier.size(22.dp), tint = Color.White)
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
                     Column {
                         Text(
                             text = "UniIntern Admin",
@@ -143,7 +131,7 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 2. Metrics Grid Row 1
+                // Metrics Grid Row 1
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -151,17 +139,13 @@ fun AdminDashboardScreen(
                     AdminMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Total Students",
-                        value = "1,180",
-                        subtext = "registered",
-                        icon = { PeopleGroupIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) }
+                        value = "1,180"
                     )
 
                     AdminMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Total Employers",
-                        value = "68",
-                        subtext = "partners",
-                        icon = { BuildingIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) }
+                        value = "68"
                     )
                 }
 
@@ -176,10 +160,6 @@ fun AdminDashboardScreen(
                         modifier = Modifier.weight(1f),
                         title = "Pending Employers",
                         value = "6",
-                        badgeText = "Vetting",
-                        badgeBg = AdminPillBadgeBg,
-                        badgeTextCol = AdminPillBadgeText,
-                        icon = { AdminShieldIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) },
                         onClick = onNavigateEmployers
                     )
 
@@ -187,10 +167,6 @@ fun AdminDashboardScreen(
                         modifier = Modifier.weight(1f),
                         title = "Pending Postings",
                         value = "9",
-                        badgeText = "Review",
-                        badgeBg = AdminPillBadgeBg,
-                        badgeTextCol = AdminPillBadgeText,
-                        icon = { BriefcaseIcon(modifier = Modifier.size(20.dp), tint = AdminAccentBlue) },
                         onClick = onNavigateInternships
                     )
                 }
@@ -206,10 +182,6 @@ fun AdminDashboardScreen(
                         modifier = Modifier.fillMaxWidth(),
                         title = "Open Reports",
                         value = "3",
-                        badgeText = "Flagged",
-                        badgeBg = AdminRedAlertBg,
-                        badgeTextCol = AdminRedAlert,
-                        icon = { FlagIcon(modifier = Modifier.size(20.dp), tint = AdminRedAlert) },
                         accentLineColor = AdminRedAlert,
                         onClick = onNavigateReports
                     )
@@ -217,55 +189,43 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 3. Pending Actions Section
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    WarningBoxIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Pending Actions",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy
-                    )
-                }
+                // Pending Actions Section
+                Text(
+                    text = "Pending Actions",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminDarkNavy
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Action Card 1: Review 6 Pending Employers
                 PendingActionCard(
                     title = "Review 6 Pending Employers",
                     subtitle = "Illovo Sugar, FDH Holdings, Nico Holdings",
                     statusText = "Awaiting accreditation check",
                     actionText = "Start Vetting",
-                    icon = { CheckboxDocIcon(modifier = Modifier.size(22.dp), tint = AdminAccentBlue) },
                     onClick = onNavigateEmployers
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Action Card 2: Review 9 Pending Internships
                 PendingActionCard(
                     title = "Review 9 Pending Internships",
-                    subtitle = "TNM Systems Admin, Airtel Mobile Dev, RBM...",
+                    subtitle = "TNM Systems Admin, Airtel Mobile Dev, RBM Analyst",
                     statusText = "Department alignment check",
                     actionText = "Review Listings",
-                    icon = { ListCheckIcon(modifier = Modifier.size(22.dp), tint = AdminAccentBlue) },
                     onClick = onNavigateInternships
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 4. Recent Activity Section
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    HistoryClockIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Recent Activity",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy
-                    )
-                }
+                // Recent Activity Section
+                Text(
+                    text = "Recent Activity",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminDarkNavy
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -273,15 +233,14 @@ fun AdminDashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // Item 1
                         ActivityItem(
                             boldText = "Illovo Sugar Malawi Plc",
                             normalText = " uploaded PACRA registration documents.",
-                            timestamp = "15m ago • Compliance Desk",
-                            icon = { FileUpIcon(modifier = Modifier.size(18.dp), tint = AdminAccentBlue) }
+                            timestamp = "15m ago • Compliance Desk"
                         )
 
                         HorizontalDivider(
@@ -289,12 +248,10 @@ fun AdminDashboardScreen(
                             color = Color(0xFFF1F5F9)
                         )
 
-                        // Item 2
                         ActivityItem(
                             boldText = "National Bank of Malawi",
                             normalText = " approved by Dean of Science.",
-                            timestamp = "Yesterday • Institutional Clearance",
-                            icon = { CheckCircleIcon(modifier = Modifier.size(18.dp), tint = AdminAccentBlue) }
+                            timestamp = "Yesterday • Institutional Clearance"
                         )
                     }
                 }
@@ -302,7 +259,7 @@ fun AdminDashboardScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // 5. Admin Bottom Navigation Bar
+            // Admin Bottom Navigation Bar
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
 
             Row(
@@ -359,11 +316,6 @@ private fun AdminMetricCard(
     modifier: Modifier = Modifier,
     title: String,
     value: String,
-    subtext: String = "",
-    badgeText: String = "",
-    badgeBg: Color = Color.Transparent,
-    badgeTextCol: Color = Color.Unspecified,
-    icon: @Composable () -> Unit,
     accentLineColor: Color? = null,
     onClick: () -> Unit = {}
 ) {
@@ -371,8 +323,8 @@ private fun AdminMetricCard(
         modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        shadowElevation = 1.dp
+        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+        shadowElevation = 2.dp
     ) {
         Box {
             if (accentLineColor != null) {
@@ -385,58 +337,21 @@ private fun AdminMetricCard(
                 )
             }
             Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = title,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF475569)
-                    )
-                    icon()
-                }
+                Text(
+                    text = title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF475569)
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = value,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy
-                    )
-
-                    if (subtext.isNotEmpty()) {
-                        Text(
-                            text = subtext,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF64748B)
-                        )
-                    }
-
-                    if (badgeText.isNotEmpty()) {
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = badgeBg
-                        ) {
-                            Text(
-                                text = badgeText,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = badgeTextCol,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = value,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminDarkNavy
+                )
             }
         }
     }
@@ -448,7 +363,6 @@ private fun PendingActionCard(
     subtitle: String,
     statusText: String,
     actionText: String,
-    icon: @Composable () -> Unit,
     onClick: () -> Unit
 ) {
     Surface(
@@ -457,37 +371,25 @@ private fun PendingActionCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+        shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(Color(0xFFEFF6FF), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    icon()
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = subtitle,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF334155),
-                        lineHeight = 16.sp
-                    )
-                }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF334155),
+                    lineHeight = 16.sp
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -527,45 +429,38 @@ private fun PendingActionCard(
 private fun ActivityItem(
     boldText: String,
     normalText: String,
-    timestamp: String,
-    icon: @Composable () -> Unit
+    timestamp: String
 ) {
-    Row(verticalAlignment = Alignment.Top) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(Color(0xFFEFF6FF), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            icon()
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row {
-                Text(
-                    text = boldText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AdminDarkNavy
-                )
-                Text(
-                    text = normalText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF334155),
-                    lineHeight = 16.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = timestamp,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF64748B)
-            )
-        }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = buildAnnotatedString {
+                withStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy
+                    )
+                ) {
+                    append(boldText)
+                }
+                withStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
+                    )
+                ) {
+                    append(normalText)
+                }
+            },
+            fontSize = 13.sp,
+            lineHeight = 16.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = timestamp,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF64748B)
+        )
     }
 }
 
@@ -614,110 +509,6 @@ fun AdminShieldIcon(
 }
 
 @Composable
-fun PeopleGroupIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminAccentBlue
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawCircle(color = tint, radius = w * 0.18f, center = Offset(w * 0.5f, h * 0.3f))
-        val body = Path().apply {
-            moveTo(w * 0.2f, h * 0.8f)
-            cubicTo(w * 0.2f, h * 0.55f, w * 0.8f, h * 0.55f, w * 0.8f, h * 0.8f)
-        }
-        drawPath(body, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round))
-    }
-}
-
-@Composable
-fun FlagIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminRedAlert
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawLine(color = tint, start = Offset(w * 0.2f, h * 0.15f), end = Offset(w * 0.2f, h * 0.88f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
-        val flag = Path().apply {
-            moveTo(w * 0.2f, h * 0.18f)
-            lineTo(w * 0.82f, h * 0.32f)
-            lineTo(w * 0.2f, h * 0.52f)
-            close()
-        }
-        drawPath(flag, color = tint)
-    }
-}
-
-@Composable
-fun WarningBoxIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminDarkNavy
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val box = Path().apply {
-            moveTo(w * 0.15f, h * 0.22f)
-            lineTo(w * 0.85f, h * 0.22f)
-            lineTo(w * 0.85f, h * 0.78f)
-            lineTo(w * 0.15f, h * 0.78f)
-            close()
-        }
-        drawPath(box, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.38f), end = Offset(w * 0.5f, h * 0.54f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawCircle(color = tint, radius = w * 0.04f, center = Offset(w * 0.5f, h * 0.64f))
-    }
-}
-
-@Composable
-fun CheckboxDocIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminAccentBlue
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val box = Path().apply {
-            moveTo(w * 0.2f, h * 0.2f)
-            lineTo(w * 0.8f, h * 0.2f)
-            lineTo(w * 0.8f, h * 0.8f)
-            lineTo(w * 0.2f, h * 0.8f)
-            close()
-        }
-        drawPath(box, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        val check = Path().apply {
-            moveTo(w * 0.35f, h * 0.50f)
-            lineTo(w * 0.48f, h * 0.62f)
-            lineTo(w * 0.68f, h * 0.38f)
-        }
-        drawPath(check, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
-
-@Composable
-fun ListCheckIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminAccentBlue
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val box = Path().apply {
-            moveTo(w * 0.2f, h * 0.2f)
-            lineTo(w * 0.8f, h * 0.2f)
-            lineTo(w * 0.8f, h * 0.8f)
-            lineTo(w * 0.2f, h * 0.8f)
-            close()
-        }
-        drawPath(box, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.38f), end = Offset(w * 0.65f, h * 0.38f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.50f), end = Offset(w * 0.65f, h * 0.50f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.62f), end = Offset(w * 0.55f, h * 0.62f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-    }
-}
-
-@Composable
 fun HistoryClockIcon(
     modifier: Modifier = Modifier,
     tint: Color = AdminDarkNavy
@@ -728,33 +519,6 @@ fun HistoryClockIcon(
         drawCircle(color = tint, radius = w * 0.38f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.08f))
         drawLine(color = tint, start = Offset(w * 0.5f, h * 0.5f), end = Offset(w * 0.5f, h * 0.28f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
         drawLine(color = tint, start = Offset(w * 0.5f, h * 0.5f), end = Offset(w * 0.68f, h * 0.5f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-    }
-}
-
-@Composable
-fun FileUpIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = AdminAccentBlue
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val doc = Path().apply {
-            moveTo(w * 0.25f, h * 0.18f)
-            lineTo(w * 0.75f, h * 0.18f)
-            lineTo(w * 0.75f, h * 0.82f)
-            lineTo(w * 0.25f, h * 0.82f)
-            close()
-        }
-        drawPath(doc, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        val arrow = Path().apply {
-            moveTo(w * 0.50f, h * 0.62f)
-            lineTo(w * 0.50f, h * 0.38f)
-            moveTo(w * 0.38f, h * 0.48f)
-            lineTo(w * 0.50f, h * 0.38f)
-            lineTo(w * 0.62f, h * 0.48f)
-        }
-        drawPath(arrow, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
