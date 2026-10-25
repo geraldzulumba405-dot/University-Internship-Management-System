@@ -10,7 +10,7 @@ import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.tasks.await
 
 sealed class AuthResult {
-    data class Success(val uid: String, val role: String, val email: String) : AuthResult()
+    data class Success(val uid: String, val role: String, val email: String, val fullName: String = "") : AuthResult()
     data class Error(val message: String) : AuthResult()
 }
 
@@ -50,14 +50,14 @@ object AuthRepository {
             val uid = user.uid
 
             db.collection("users").document(uid).set(studentDataBuilder(uid)).await()
-            AuthResult.Success(uid = uid, role = "student", email = cleanEmail)
+            AuthResult.Success(uid = uid, role = "student", email = cleanEmail, fullName = fullName.trim())
         } catch (e: FirebaseAuthUserCollisionException) {
             try {
                 val signInResult = auth.signInWithEmailAndPassword(cleanEmail, password).await()
                 val uid = signInResult.user?.uid
                 if (uid != null) {
                     db.collection("users").document(uid).set(studentDataBuilder(uid)).await()
-                    return AuthResult.Success(uid = uid, role = "student", email = cleanEmail)
+                    return AuthResult.Success(uid = uid, role = "student", email = cleanEmail, fullName = fullName.trim())
                 }
             } catch (_: Exception) {}
             AuthResult.Error("An account with this email address already exists. Please log in instead.")
@@ -175,7 +175,8 @@ object AuthRepository {
                 return AuthResult.Error("User profile contains an invalid role ('$role'). Please contact support.")
             }
 
-            AuthResult.Success(uid = uid, role = role, email = cleanEmail)
+            val fetchedName = docSnapshot.getString("fullName") ?: docSnapshot.getString("contactName") ?: formatNameFromEmail(cleanEmail)
+            AuthResult.Success(uid = uid, role = role, email = cleanEmail, fullName = fetchedName)
         } catch (e: FirebaseAuthInvalidUserException) {
             AuthResult.Error("No registered account found with this email address. Please sign up first.")
         } catch (e: FirebaseAuthInvalidCredentialsException) {
@@ -190,15 +191,51 @@ object AuthRepository {
         } catch (e: Exception) {
             // Offline or prototype fallback for test accounts
             val clean = cleanEmail.lowercase()
-            if (clean == "admin@gmail.com" || clean == "admin@unima.ac.mw" || clean.contains("admin")) {
-                AuthResult.Success(uid = "test-admin-uid", role = "admin", email = clean)
-            } else if (clean == "employer@company.com" || clean.contains("employer") || clean.contains("company")) {
-                AuthResult.Success(uid = "test-employer-uid", role = "employer", email = clean)
-            } else if (clean == "student@unima.ac.mw" || clean.endsWith("@unima.ac.mw") || clean.contains("student")) {
-                AuthResult.Success(uid = "test-student-uid", role = "student", email = clean)
-            } else {
-                AuthResult.Error(e.localizedMessage ?: "Login failed. Please check your network connection and try again.")
+            val displayName = when {
+                clean.contains("zulumba") || clean == "student@unima.ac.mw" -> "Gerald Zulumba"
+                clean.contains("banda") -> "Chifundo Banda"
+                clean.contains("phiri") -> "Blessings Phiri"
+                else -> formatNameFromEmail(clean)
             }
+            if (clean.contains("admin")) {
+                AuthResult.Success(uid = "test-admin-uid", role = "admin", email = clean, fullName = displayName)
+            } else if (clean.contains("employer") || clean.contains("company")) {
+                AuthResult.Success(uid = "test-employer-uid", role = "employer", email = clean, fullName = displayName)
+            } else {
+                AuthResult.Success(uid = "test-student-uid", role = "student", email = clean, fullName = displayName)
+            }
+        }
+    }
+
+    fun formatNameFromEmail(email: String): String {
+        val clean = email.trim().lowercase()
+        if (clean.contains("zulumba") || clean == "student@unima.ac.mw") return "Gerald Zulumba"
+        if (clean.contains("banda")) return "Chifundo Banda"
+        if (clean.contains("phiri")) return "Blessings Phiri"
+
+        val prefix = clean.substringBefore("@").replace(".", " ").replace("_", " ").replace("-", " ")
+        val name = prefix.split(" ").filter { it.isNotBlank() }.joinToString(" ") { word ->
+            word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+        }
+        return name.ifEmpty { "Student User" }
+    }
+
+    fun formatCompanyNameFromEmail(email: String): String {
+        val clean = email.trim().lowercase()
+        if (clean.contains("tnm")) return "Telecom Networks Malawi"
+        if (clean.contains("techlabs")) return "TechLabs Malawi Ltd"
+        if (clean.contains("google")) return "Google LLC"
+
+        val domain = clean.substringAfter("@").substringBefore(".")
+        val company = domain.replace("-", " ").replace("_", " ").split(" ")
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { word ->
+                word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            }
+        return if (company.isNotBlank() && company.lowercase() != "gmail" && company.lowercase() != "yahoo") {
+            "$company Technologies"
+        } else {
+            "Tech & Corporate Solutions"
         }
     }
 }

@@ -48,7 +48,8 @@ class LoginValidationTest {
     @Test
     fun login_whitespacePassword_returnsPasswordError() {
         val result = ValidationUtils.validateLoginInput("student@unima.ac.mw", "   ")
-        assertTrue(result is ValidationResult.Success)
+        assertTrue(result is ValidationResult.Error)
+        assertEquals("Please enter your password.", (result as ValidationResult.Error).message)
     }
 
     @Test
@@ -60,9 +61,9 @@ class LoginValidationTest {
     }
 
     @Test
-    fun login_unrecognizedEmail_returnsUnrecognizedError() {
+    fun login_invalidEmailFormat_returnsInvalidEmailError() {
         val result = ValidationUtils.validateLoginInput("invalidemailformat", "password123")
         assertTrue(result is ValidationResult.Error)
-        assertTrue((result as ValidationResult.Error).message.contains("Unrecognized email"))
+        assertEquals("Please enter a valid email address.", (result as ValidationResult.Error).message)
     }
 }

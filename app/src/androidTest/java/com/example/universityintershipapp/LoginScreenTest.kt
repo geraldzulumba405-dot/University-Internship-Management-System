@@ -63,7 +63,7 @@ class LoginScreenTest {
 
         composeTestRule.setContent {
             LoginScreen(
-                onLoginSubmit = { email, pass ->
+                onLoginSubmit = { email, pass, _, _ ->
                     submittedEmail = email
                     submittedPassword = pass
                 }
@@ -84,7 +84,7 @@ class LoginScreenTest {
 
         composeTestRule.setContent {
             LoginScreen(
-                onLoginSubmit = { email, _ ->
+                onLoginSubmit = { email, _, _, _ ->
                     submittedEmail = email
                 }
             )
