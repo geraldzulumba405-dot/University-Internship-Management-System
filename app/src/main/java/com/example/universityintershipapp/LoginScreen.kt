@@ -57,7 +57,7 @@ import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 fun LoginScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
-    onLoginSubmit: (String, String, String) -> Unit = { _, _, _ -> },
+    onLoginSubmit: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
@@ -279,7 +279,7 @@ fun LoginScreen(
                             isLoading = false
                             when (res) {
                                 is AuthResult.Success -> {
-                                    onLoginSubmit(res.email, password, res.role)
+                                    onLoginSubmit(res.email, password, res.role, res.fullName)
                                 }
                                 is AuthResult.Error -> {
                                     errorMessage = res.message

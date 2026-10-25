@@ -57,6 +57,10 @@ private val RedAlertColor = Color(0xFFDC2626)
 fun StudentProfileScreen(
     modifier: Modifier = Modifier,
     studentName: String = "Gerald Zulumba",
+    studentEmail: String = "gzulumba@unima.ac.mw",
+    studentId: String = "BSC-INF-18-23",
+    programme: String = "BSc Computer Science",
+    yearOfStudy: String = "Year 4",
     onNavigateHome: () -> Unit = {},
     onNavigateSearch: () -> Unit = {},
     onNavigateApplications: () -> Unit = {},
@@ -135,14 +139,14 @@ fun StudentProfileScreen(
                         Text(studentName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "B.Sc. Computer Science & Software Engineering, Year 3",
+                            "$programme • $yearOfStudy",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            "🏛️ National University / Institute of Technology",
+                            "✉️ $studentEmail  |  🆔 $studentId",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = TextSecondary

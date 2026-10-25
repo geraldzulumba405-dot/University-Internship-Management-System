@@ -56,7 +56,11 @@ import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 @Composable
 fun EmployerProfileScreen(
     modifier: Modifier = Modifier,
-    companyName: String = "Apex Tech Solutions",
+    companyName: String = "Telecom Networks Malawi",
+    contactPerson: String = "Blessings Phiri",
+    officialEmail: String = "careers@tnm.mw",
+    industry: String = "Telecommunications & Digital Services",
+    location: String = "Blantyre, Malawi",
     onNavigateHome: () -> Unit = {},
     onNavigateInternships: () -> Unit = {},
     onNavigateApplications: () -> Unit = {},
@@ -215,7 +219,7 @@ fun EmployerProfileScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Enterprise Software & Cloud Engineering • Official Campus Partner",
+                                    text = "$industry • Official Campus Partner",
                                     fontSize = 12.sp,
                                     color = Color(0xFF475569),
                                     lineHeight = 16.sp
@@ -302,6 +306,13 @@ fun EmployerProfileScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         // POC Member Row
+                        val initials = contactPerson.split(" ")
+                            .filter { it.isNotBlank() }
+                            .take(2)
+                            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+                            .joinToString("")
+                            .ifEmpty { "EP" }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
@@ -310,7 +321,7 @@ fun EmployerProfileScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "MB",
+                                    text = initials,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E3A8A)
@@ -321,14 +332,14 @@ fun EmployerProfileScreen(
 
                             Column {
                                 Text(
-                                    text = "Chikondi Mapira",
+                                    text = contactPerson,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = textBlack
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Head of University Talent Acquisition",
+                                    text = "Head of University Talent Acquisition ($location)",
                                     fontSize = 12.sp,
                                     color = Color(0xFF64748B)
                                 )
@@ -358,7 +369,7 @@ fun EmployerProfileScreen(
                                         EmailIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF1E3A8A))
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "c.mapira@apextech.com",
+                                            text = officialEmail,
                                             fontSize = 12.sp,
                                             color = Color(0xFF334155),
                                             maxLines = 1,

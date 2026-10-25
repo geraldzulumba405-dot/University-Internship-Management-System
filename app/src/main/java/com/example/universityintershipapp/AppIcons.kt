@@ -3,6 +3,7 @@ package com.example.universityintershipapp
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -186,5 +187,73 @@ fun CheckCircleIcon(
             lineTo(w * 0.68f, h * 0.38f)
         }
         drawPath(check, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
+@Composable
+fun UniInternAppLogoIcon(
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // 1. Outer Squircle Card Background (Navy Blue)
+        val corner = w * 0.22f
+        drawRoundRect(
+            color = Color(0xFF1B3B80),
+            topLeft = Offset.Zero,
+            size = Size(w, h),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner)
+        )
+
+        // 2. White Shield / U-Shape Base
+        val shieldPath = Path().apply {
+            moveTo(w * 0.28f, h * 0.44f)
+            lineTo(w * 0.28f, h * 0.62f)
+            cubicTo(w * 0.28f, h * 0.82f, w * 0.72f, h * 0.82f, w * 0.72f, h * 0.62f)
+            lineTo(w * 0.72f, h * 0.44f)
+            close()
+        }
+        drawPath(shieldPath, color = Color(0xFFF8FAFC))
+
+        // 3. Dark Blue Verified Checkmark
+        val checkPath = Path().apply {
+            moveTo(w * 0.39f, h * 0.58f)
+            lineTo(w * 0.47f, h * 0.66f)
+            lineTo(w * 0.61f, h * 0.51f)
+        }
+        drawPath(
+            path = checkPath,
+            color = Color(0xFF1B3B80),
+            style = Stroke(width = w * 0.075f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+
+        // 4. Bright Cyan Graduation Cap Top
+        val capTop = Path().apply {
+            moveTo(w * 0.50f, h * 0.21f)
+            lineTo(w * 0.88f, h * 0.39f)
+            lineTo(w * 0.50f, h * 0.57f)
+            lineTo(w * 0.12f, h * 0.39f)
+            close()
+        }
+        drawPath(capTop, color = Color(0xFF38BDF8))
+
+        // 5. Bright Cyan Tassel & Ball
+        val tasselLine = Path().apply {
+            moveTo(w * 0.80f, h * 0.41f)
+            lineTo(w * 0.80f, h * 0.62f)
+        }
+        drawPath(
+            path = tasselLine,
+            color = Color(0xFF38BDF8),
+            style = Stroke(width = w * 0.05f, cap = StrokeCap.Round)
+        )
+
+        drawCircle(
+            color = Color(0xFF38BDF8),
+            radius = w * 0.04f,
+            center = Offset(w * 0.80f, h * 0.65f)
+        )
     }
 }

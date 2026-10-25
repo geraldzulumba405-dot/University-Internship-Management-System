@@ -63,10 +63,10 @@ class ValidationUtilsTest {
     }
 
     @Test
-    fun login_unrecognizedEmail_returnsUnrecognizedError() {
+    fun login_invalidEmailFormat_returnsInvalidEmailError() {
         val result = ValidationUtils.validateLoginInput("unknown_domain_no_at", "password123")
         assertTrue(result is ValidationResult.Error)
-        assertTrue((result as ValidationResult.Error).message.contains("Unrecognized email"))
+        assertEquals("Please enter a valid email address.", (result as ValidationResult.Error).message)
     }
 
     // --- STUDENT REGISTRATION VALIDATION TESTS ---

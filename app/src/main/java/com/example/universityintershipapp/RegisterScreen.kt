@@ -66,6 +66,7 @@ fun RegisterScreen(
     onLoginClick: () -> Unit = {},
     onCreateAccountSuccess: () -> Unit = {},
     onCreateAccountSuccessWithRole: (String) -> Unit = {},
+    onCreateAccountSuccessWithDetails: (role: String, name: String, email: String, studentId: String, programme: String, year: String) -> Unit = { _, _, _, _, _, _ -> },
 ) {
     var accountType by remember { mutableStateOf("student") }
     var isLoading by remember { mutableStateOf(false) }
@@ -204,6 +205,14 @@ fun RegisterScreen(
                 when (res) {
                     is AuthResult.Success -> {
                         validationErrorMsg = ""
+                        onCreateAccountSuccessWithDetails(
+                            res.role,
+                            res.fullName,
+                            res.email,
+                            studentId,
+                            programme,
+                            yearOfStudy
+                        )
                         onCreateAccountSuccessWithRole(res.role)
                         onCreateAccountSuccess()
                     }

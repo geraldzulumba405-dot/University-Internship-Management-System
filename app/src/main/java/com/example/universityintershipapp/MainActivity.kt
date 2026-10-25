@@ -40,6 +40,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             UniversityIntershipAppTheme {
                 var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+                var loggedInStudentName by remember { mutableStateOf("Gerald Zulumba") }
+                var loggedInStudentEmail by remember { mutableStateOf("gzulumba@unima.ac.mw") }
+                var loggedInStudentId by remember { mutableStateOf("BSC-INF-18-23") }
+                var loggedInProgramme by remember { mutableStateOf("BSc Computer Science & Software Engineering") }
+                var loggedInYearOfStudy by remember { mutableStateOf("Year 4") }
+
+                var loggedInEmployerCompanyName by remember { mutableStateOf("Telecom Networks Malawi") }
+                var loggedInEmployerContactPerson by remember { mutableStateOf("Blessings Phiri") }
+                var loggedInEmployerEmail by remember { mutableStateOf("careers@tnm.mw") }
+                var loggedInEmployerIndustry by remember { mutableStateOf("Telecommunications & Digital Services") }
+                var loggedInEmployerLocation by remember { mutableStateOf("Blantyre, Malawi") }
 
                 BackHandler(enabled = currentScreen != AppScreen.SPLASH && currentScreen != AppScreen.LOGIN) {
                     when (currentScreen) {
@@ -66,13 +77,18 @@ class MainActivity : ComponentActivity() {
                     AppScreen.LOGIN -> {
                         LoginScreen(
                             onBackClick = {},
-                            onLoginSubmit = { email, _, role ->
+                            onLoginSubmit = { email, _, role, fullName ->
                                 val cleanEmail = email.trim().lowercase()
-                                if (role == "admin" || cleanEmail == "admin@gmail.com" || cleanEmail.contains("admin")) {
+                                if (role == "admin" || cleanEmail.contains("admin")) {
                                     currentScreen = AppScreen.ADMIN_DASHBOARD
-                                } else if (role == "employer" || cleanEmail == "employer@company.com" || cleanEmail.contains("employer") || cleanEmail.contains("company")) {
+                                } else if (role == "employer" || cleanEmail.contains("employer") || cleanEmail.contains("company")) {
+                                    loggedInEmployerEmail = cleanEmail
+                                    loggedInEmployerContactPerson = if (fullName.isNotBlank()) fullName else AuthRepository.formatNameFromEmail(cleanEmail)
+                                    loggedInEmployerCompanyName = AuthRepository.formatCompanyNameFromEmail(cleanEmail)
                                     currentScreen = AppScreen.EMPLOYER_HOME
                                 } else {
+                                    loggedInStudentEmail = cleanEmail
+                                    loggedInStudentName = if (fullName.isNotBlank()) fullName else AuthRepository.formatNameFromEmail(cleanEmail)
                                     currentScreen = AppScreen.STUDENT_HOME
                                 }
                             },
@@ -85,6 +101,18 @@ class MainActivity : ComponentActivity() {
                         RegisterScreen(
                             onBackClick = { currentScreen = AppScreen.LOGIN },
                             onLoginClick = { currentScreen = AppScreen.LOGIN },
+                            onCreateAccountSuccessWithDetails = { role, name, email, studentId, programme, year ->
+                                if (role == "employer") {
+                                    if (name.isNotBlank()) loggedInEmployerContactPerson = name
+                                    if (email.isNotBlank()) loggedInEmployerEmail = email
+                                } else {
+                                    if (name.isNotBlank()) loggedInStudentName = name
+                                    if (email.isNotBlank()) loggedInStudentEmail = email
+                                    if (studentId.isNotBlank()) loggedInStudentId = studentId
+                                    if (programme.isNotBlank()) loggedInProgramme = programme
+                                    if (year.isNotBlank()) loggedInYearOfStudy = year
+                                }
+                            },
                             onCreateAccountSuccessWithRole = { role ->
                                 if (role == "admin") {
                                     currentScreen = AppScreen.ADMIN_DASHBOARD
@@ -103,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     }
                     AppScreen.STUDENT_HOME -> {
                         StudentHomeScreen(
+                            studentName = loggedInStudentName,
                             onSearchClick = { currentScreen = AppScreen.STUDENT_SEARCH },
                             onApplicationsClick = { currentScreen = AppScreen.MY_APPLICATIONS },
                             onProfileClick = { currentScreen = AppScreen.STUDENT_PROFILE },
@@ -146,6 +175,11 @@ class MainActivity : ComponentActivity() {
                     }
                     AppScreen.STUDENT_PROFILE -> {
                         StudentProfileScreen(
+                            studentName = loggedInStudentName,
+                            studentEmail = loggedInStudentEmail,
+                            studentId = loggedInStudentId,
+                            programme = loggedInProgramme,
+                            yearOfStudy = loggedInYearOfStudy,
                             onNavigateHome = { currentScreen = AppScreen.STUDENT_HOME },
                             onNavigateSearch = { currentScreen = AppScreen.STUDENT_SEARCH },
                             onNavigateApplications = { currentScreen = AppScreen.MY_APPLICATIONS },
@@ -154,6 +188,7 @@ class MainActivity : ComponentActivity() {
                     }
                     AppScreen.EMPLOYER_HOME -> {
                         EmployerHomeScreen(
+                            companyName = loggedInEmployerCompanyName,
                             onPostInternshipClick = { currentScreen = AppScreen.POST_INTERNSHIP },
                             onViewApplicantsClick = { currentScreen = AppScreen.EMPLOYER_APPLICATION_REVIEW },
                             onNavigateApplicants = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
@@ -187,6 +222,11 @@ class MainActivity : ComponentActivity() {
                     }
                     AppScreen.EMPLOYER_PROFILE -> {
                         EmployerProfileScreen(
+                            companyName = loggedInEmployerCompanyName,
+                            contactPerson = loggedInEmployerContactPerson,
+                            officialEmail = loggedInEmployerEmail,
+                            industry = loggedInEmployerIndustry,
+                            location = loggedInEmployerLocation,
                             onNavigateHome = { currentScreen = AppScreen.EMPLOYER_HOME },
                             onNavigateInternships = { currentScreen = AppScreen.POST_INTERNSHIP },
                             onNavigateApplications = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
