@@ -27,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +61,40 @@ fun StudentApplicationScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var isSaved by remember { mutableStateOf(value = false) }
 
+    var locationState by remember { mutableStateOf(location) }
+    var descriptionState by remember { mutableStateOf("As a Software Engineering Intern at $company, you will work on core enterprise architecture and user-facing features that impact billions of worldwide users. You will be matched with an industry mentor and integrated into an active agile engineering team.") }
+    var durationState by remember { mutableStateOf("12 Weeks") }
+    var deadlineState by remember { mutableStateOf("October 15, 2026") }
+    var skillsState by remember { mutableStateOf(listOf("Kotlin", "Java", "Python", "Cloud Platforms")) }
+    var isAvailable by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(title) {
+        isLoading = true
+        try {
+            val jobs = InternshipRepository.getInternships()
+            if (jobs.isEmpty()) {
+                isAvailable = false
+            } else {
+                val match = jobs.find { it.title.equals(title, ignoreCase = true) }
+                if (match != null) {
+                    if (match.location.isNotBlank()) locationState = match.location
+                    if (match.description.isNotBlank()) descriptionState = match.description
+                    if (match.duration.isNotBlank()) durationState = match.duration
+                    if (match.deadline.isNotBlank()) deadlineState = match.deadline
+                    if (match.skills.isNotEmpty()) skillsState = match.skills
+                    isAvailable = true
+                } else {
+                    isAvailable = false
+                }
+            }
+        } catch (_: Exception) {
+            isAvailable = false
+        } finally {
+            isLoading = false
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -73,7 +108,7 @@ fun StudentApplicationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
@@ -87,52 +122,19 @@ fun StudentApplicationScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = "Internship Detail",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0F2C59)
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CheckBadgeIcon(modifier = Modifier.size(12.dp), tint = Color(0xFF0F766E))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "UniApproved Milestone",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF0F766E)
-                        )
-                    }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable { isSaved = !isSaved },
-                    contentAlignment = Alignment.Center
-                ) {
-                    BookmarkIcon(
-                        modifier = Modifier.size(20.dp),
-                        tint = if (isSaved) Color(0xFF0F2C59) else Color(0xFF334155)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable { onShareClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    ShareIcon(
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF334155)
-                    )
-                }
+                Spacer(modifier = Modifier.size(36.dp))
             }
 
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
@@ -144,7 +146,32 @@ fun StudentApplicationScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-                // 2. Main Hero Card
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Loading internship details...", fontSize = 13.sp, color = Color(0xFF64748B))
+                    }
+                } else if (!isAvailable) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        shadowElevation = 1.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No information available for the internship",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
+                        }
+                    }
+                } else {
+                    // 2. Main Hero Card
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -153,35 +180,7 @@ fun StudentApplicationScreen(
                     shadowElevation = 1.dp
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            CompanyLogoG(modifier = Modifier.size(52.dp))
-
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color(0xFFFEF3C7),
-                                border = BorderStroke(1.dp, Color(0xFFFDE68A))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    ClockIcon(modifier = Modifier.size(13.dp), tint = Color(0xFFB45309))
-                                    Text(
-                                        text = "4 days remaining!",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFB45309)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = title,
@@ -202,41 +201,27 @@ fun StudentApplicationScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             // Location
-                            Row(verticalAlignment = Alignment.Top) {
-                                LocationPinIcon(
-                                    modifier = Modifier.size(18.dp),
-                                    tint = Color(0xFF1E3A8A)
+                            Column {
+                                Text(text = "Location", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
+                                Text(
+                                    text = locationState,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text(text = "Location", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                                    Text(
-                                        text = location,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A)
-                                    )
-                                    Text(text = "Hybrid / On-site", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                                }
+                                Text(text = "On-site", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                             }
 
                             // Duration & Pace
-                            Row(verticalAlignment = Alignment.Top) {
-                                CalendarIcon(
-                                    modifier = Modifier.size(18.dp),
-                                    tint = Color(0xFF0F766E)
+                            Column {
+                                Text(text = "Duration", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
+                                Text(
+                                    text = durationState,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text(text = "Duration & Pace", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                                    Text(
-                                        text = "12 Weeks",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A)
-                                    )
-                                    Text(text = "Full-time (40 hrs/wk)", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                                }
+
                             }
                         }
 
@@ -256,8 +241,6 @@ fun StudentApplicationScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CalendarIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF1E3A8A))
-                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = "Application Deadline:",
                                         fontSize = 12.sp,
@@ -266,7 +249,7 @@ fun StudentApplicationScreen(
                                 }
 
                                 Text(
-                                    text = "October 15, 2026",
+                                    text = deadlineState,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E3A8A)
@@ -277,37 +260,6 @@ fun StudentApplicationScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                // 3. Info Cards Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    InfoStatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = { DollarIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF0F766E)) },
-                        iconBg = Color(0xFFCCFBF1),
-                        label = "Rate",
-                        value = "$48.00 / hr"
-                    )
-
-                    InfoStatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = { GraduationCapIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF1E3A8A)) },
-                        iconBg = Color(0xFFDBEAFE),
-                        label = "Academic Credit",
-                        value = "Eligible (3-4 GPA)",
-                        valueColor = Color(0xFF1E3A8A)
-                    )
-
-                    InfoStatCard(
-                        modifier = Modifier.weight(1f),
-                        icon = { BriefcaseIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF1E3A8A)) },
-                        iconBg = Color(0xFFDBEAFE),
-                        label = "Standing",
-                        value = "Jr. / Sr. Only"
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -335,181 +287,117 @@ fun StudentApplicationScreen(
                             modifier = Modifier.weight(1f),
                             onClick = { selectedTab = 1 }
                         )
-                        TabItem(
-                            label = "Instructions",
-                            isSelected = selectedTab == 2,
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedTab = 2 }
-                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 5. Role Overview & Responsibilities Card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                    shadowElevation = 1.dp
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                ApplicationsNavIcon(
-                                    modifier = Modifier.size(16.dp),
-                                    tint = Color(0xFF1E3A8A)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
+                if (selectedTab == 0) {
+                    // 5. Role Overview & Responsibilities Card
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        shadowElevation = 1.dp
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
                             Text(
                                 text = "Role Overview & Responsibilities",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0F172A)
                             )
-                        }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = "As a Software Engineering Intern at $company, you will work on core enterprise architecture and user-facing features that impact billions of worldwide users. You will be matched with an industry mentor and integrated into an active agile engineering team.",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF334155),
-                            lineHeight = 19.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Responsibility Item 1
-                        ResponsibilityBox(
-                            icon = { CheckCircleIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F766E)) },
-                            boldText = "Enterprise Development: ",
-                            description = "Design, test, deploy, and maintain large-scale services and APIs across cloud infrastructures."
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Responsibility Item 2
-                        ResponsibilityBox(
-                            icon = { MentorIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F766E)) },
-                            boldText = "Senior Mentorship: ",
-                            description = "1-on-1 technical guidance from Principal Engineers, weekly review sprints, and university coordinator oversight."
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Responsibility Item 3
-                        ResponsibilityBox(
-                            icon = { CloudIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F766E)) },
-                            boldText = "Scalable Cloud Architecture: ",
-                            description = "Optimize high-throughput microservices using modern storage engines and containerized workloads."
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 6. University Pre-Approved Curriculum Card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFEFF6FF),
-                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ShieldCheckIcon(
-                                modifier = Modifier.size(20.dp),
-                                tint = Color(0xFF1E3A8A)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "University Pre-Approved Curriculum",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F2C59)
+                                text = descriptionState,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF334155),
+                                lineHeight = 19.sp
                             )
                         }
+                    }
+                } else if (selectedTab == 1) {
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Card 1: Required Qualifications
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Column(modifier = Modifier.padding(18.dp)) {
+                                Text(
+                                    text = "Required Qualifications",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "• Currently enrolled in a Bachelor's or Master's degree program in Computer Science, Software Engineering, or related technical field.\n• Minimum cumulative GPA of 3.0 or equivalent.\n• Strong foundation in data structures, algorithms, and object-oriented programming.",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF334155),
+                                    lineHeight = 19.sp
+                                )
+                            }
+                        }
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "This position fulfills the required 480 fieldwork contact hours for the College of Engineering & Applied Sciences summer internship credit (ENGR-4990).",
-                            fontSize = 12.sp,
-                            color = Color(0xFF334155),
-                            lineHeight = 17.sp
-                        )
+                        // Card 2: Technical Skills
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            shadowElevation = 1.dp
+                        ) {
+                            Column(modifier = Modifier.padding(18.dp)) {
+                                Text(
+                                    text = "Technical Skills",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = if (skillsState.isNotEmpty()) skillsState.joinToString(prefix = "• ", separator = "\n• ") else "• Proficiency in Kotlin, Java, Python, or C++.\n• Familiarity with modern web/mobile development frameworks (Jetpack Compose, React, Flutter).\n• Experience with version control systems (Git/GitHub) and cloud platforms (AWS, GCP, or Firebase).",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF334155),
+                                    lineHeight = 19.sp
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
-            // 7. Fixed Bottom Action Bar
-            HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clickable { isSaved = !isSaved },
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        BookmarkIcon(
-                            modifier = Modifier.size(22.dp),
-                            tint = if (isSaved) Color(0xFF0F2C59) else Color(0xFF475569)
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(28.dp))
 
                 Button(
                     onClick = onOneTapApplyClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
+                        .fillMaxWidth()
+                        .height(48.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF0F2C59)
                     )
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        LightningIcon(
-                            modifier = Modifier.size(18.dp),
-                            tint = Color(0xFF38BDF8)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "One-Tap Apply",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        text = "Apply",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+              }
             }
         }
     }

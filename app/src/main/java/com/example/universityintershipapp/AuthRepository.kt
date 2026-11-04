@@ -40,6 +40,8 @@ object AuthRepository {
                 "yearOfStudy" to yearOfStudy.trim(),
                 "skills" to skills.trim(),
                 "role" to "student",
+                "status" to "Active",
+                "isVerified" to true,
                 "createdAt" to System.currentTimeMillis()
             )
         }
@@ -110,6 +112,8 @@ object AuthRepository {
                 "website" to website.trim(),
                 "description" to description.trim(),
                 "role" to "employer",
+                "status" to "Active",
+                "isVerified" to true,
                 "createdAt" to System.currentTimeMillis()
             )
         }
@@ -120,6 +124,17 @@ object AuthRepository {
             val uid = user.uid
 
             db.collection("users").document(uid).set(employerDataBuilder(uid)).await()
+            try {
+                val adminSnap = db.collection("users").whereEqualTo("role", "admin").get().await()
+                for (adminDoc in adminSnap.documents) {
+                    NotificationRepository.sendNotification(
+                        recipientUserId = adminDoc.id,
+                        title = "New Employer Registration",
+                        message = "${companyName.trim()} has registered and requires account review.",
+                        type = "registration"
+                    )
+                }
+            } catch (_: Exception) {}
             AuthResult.Success(uid = uid, role = "employer", email = cleanEmail)
         } catch (e: FirebaseAuthUserCollisionException) {
             try {

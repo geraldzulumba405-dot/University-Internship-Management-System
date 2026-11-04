@@ -1,9 +1,9 @@
 package com.example.universityintershipapp
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,10 +29,12 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,16 +44,22 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
 private val AdminAccentBlue = Color(0xFF1E3A8A)
-private val GreenApprove = Color(0xFF047857)
 private val RedReject = Color(0xFFDC2626)
 
 @Composable
@@ -63,6 +71,69 @@ fun AdminEmployerManagementScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedBottomNav by remember { mutableIntStateOf(1) }
+
+    var employersList by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        try {
+            val db = FirebaseFirestore.getInstance()
+            val snap = db.collection("users").whereEqualTo("role", "employer").get().await()
+            val fetched = snap.documents.mapNotNull { doc ->
+                val data = doc.data?.toMutableMap() ?: mutableMapOf()
+                data["id"] = doc.id
+                data
+            }
+            employersList = fetched
+        } catch (_: Exception) {
+            employersList = emptyList()
+        } finally {
+            isLoading = false
+        }
+    }
+
+    val updateStatus: (String, String) -> Unit = { docId, newStatus ->
+        scope.launch {
+            try {
+                FirebaseFirestore.getInstance().collection("users")
+                    .document(docId)
+                    .update(mapOf("status" to newStatus, "isVerified" to (newStatus == "Approved")))
+                    .await()
+
+                val db = FirebaseFirestore.getInstance()
+                val snap = db.collection("users").whereEqualTo("role", "employer").get().await()
+                employersList = snap.documents.mapNotNull { doc ->
+                    val data = doc.data?.toMutableMap() ?: mutableMapOf()
+                    data["id"] = doc.id
+                    data
+                }
+                Toast.makeText(context, "Employer status updated to $newStatus", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to update: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val filteredEmployers = if (searchQuery.isBlank()) {
+        employersList
+    } else {
+        employersList.filter { emp ->
+            val compName = (emp["companyName"] as? String) ?: ""
+            compName.contains(searchQuery.trim(), ignoreCase = true)
+        }
+    }
+
+    val pendingEmployers = filteredEmployers.filter { emp ->
+        val status = (emp["status"] as? String) ?: "Pending"
+        status.equals("Pending", ignoreCase = true) || status.isBlank()
+    }
+    val otherEmployers = filteredEmployers.filter { emp ->
+        val status = (emp["status"] as? String) ?: "Pending"
+        !status.equals("Pending", ignoreCase = true) && status.isNotBlank()
+    }
 
     Box(
         modifier = modifier
@@ -77,25 +148,23 @@ fun AdminEmployerManagementScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(AdminDarkNavy, RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AdminShieldIcon(modifier = Modifier.size(20.dp), tint = Color.White)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Employer Management",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy
+                    )
+                    Text(
+                        text = "Employer Registration Preview",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF475569)
+                    )
                 }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = "UniIntern Admin",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AdminDarkNavy
-                )
             }
 
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
@@ -107,22 +176,6 @@ fun AdminEmployerManagementScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-                Text(
-                    text = "Employer Management",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AdminDarkNavy,
-                    lineHeight = 30.sp
-                )
-                Text(
-                    text = "Vetting & Compliance Pipeline",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF475569)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Search Field
                 OutlinedTextField(
                     value = searchQuery,
@@ -143,203 +196,71 @@ fun AdminEmployerManagementScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Primary Vetting Card (Illovo Sugar)
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
-                    shadowElevation = 2.dp
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Box(
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .background(Color(0xFFEFF6FF), RoundedCornerShape(14.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                FactoryIcon(modifier = Modifier.size(28.dp), tint = AdminAccentBlue)
-                            }
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Illovo Sugar Malawi Plc",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AdminDarkNavy
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Commercial Agribusiness & Mfg",
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF475569)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    LocationPinIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Blantyre, Southern Region",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF475569)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = Color(0xFFF1F5F9))
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CalendarIcon(modifier = Modifier.size(15.dp), tint = Color(0xFF64748B))
-                            Spacer(modifier = Modifier.width(6.dp))
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Loading employers...", fontSize = 13.sp, color = Color(0xFF64748B))
+                    }
+                } else if (filteredEmployers.isEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(
-                                text = "Submitted Oct 24, 2026",
-                                fontSize = 12.sp,
+                                text = "No employer registrations found.",
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFF475569)
+                                color = Color(0xFF64748B)
                             )
                         }
+                    }
+                } else {
+                    // Pending Vetting Section
+                    if (pendingEmployers.isNotEmpty()) {
+                        Text(
+                            text = "Pending Review (${pendingEmployers.size})",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AdminDarkNavy
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Principal Liaison Box
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF8FAFC),
-                            border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "PRINCIPAL LIAISON",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF475569),
-                                        letterSpacing = 0.5.sp
-                                    )
-                                    Text(
-                                        text = "HR Operations",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF64748B)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Text(
-                                    text = "Blessings Phiri",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AdminDarkNavy
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    EmailIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "bphiri@illovo.mw",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = AdminAccentBlue
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    PhoneIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "+265 888 421 900",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF334155)
-                                    )
-                                }
-                            }
+                        pendingEmployers.forEach { emp ->
+                            EmployerCard(
+                                employer = emp,
+                                onApprove = { updateStatus(emp["id"] as String, "Approved") },
+                                onReject = { updateStatus(emp["id"] as String, "Rejected") }
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(18.dp))
-                        HorizontalDivider(color = Color(0xFFF1F5F9))
-                        Spacer(modifier = Modifier.height(16.dp))
+                    // Other Pending Employers (or Processed Employers) Section
+                    if (otherEmployers.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Other Pending Employers",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AdminDarkNavy
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // Action Buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Button(
-                                onClick = {},
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(46.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = GreenApprove)
-                            ) {
-                                CheckCircleIcon(modifier = Modifier.size(18.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Approve", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-
-                            OutlinedButton(
-                                onClick = {},
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(46.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, RedReject),
-                                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
-                            ) {
-                                CrossIcon(modifier = Modifier.size(18.dp), tint = RedReject)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Reject", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = RedReject)
-                            }
+                        otherEmployers.forEach { emp ->
+                            EmployerCard(
+                                employer = emp,
+                                onApprove = { updateStatus(emp["id"] as String, "Approved") },
+                                onReject = { updateStatus(emp["id"] as String, "Rejected") }
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Remaining Pending Entities Section
-                Text(
-                    text = "Remaining Pending Entities",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AdminDarkNavy
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PendingEntityCard(
-                    title = "FDH Financial Holdings Ltd",
-                    subtitle = "Banking & Financial Services • Blantyre",
-                    poc = "Mirriam Banda",
-                    date = "Oct 23, 2024"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PendingEntityCard(
-                    title = "Nico Holdings Plc",
-                    subtitle = "Insurance & Asset Management • Lilongwe",
-                    poc = "Dr. Chimwemwe Phiri",
-                    date = "Oct 22, 2024"
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
             }
 
             // Bottom Navigation Bar
@@ -381,7 +302,7 @@ fun AdminEmployerManagementScreen(
                 )
 
                 AdminBottomNavItem(
-                    label = "Reports",
+                    label = "Accounts",
                     isSelected = selectedBottomNav == 3,
                     icon = { BarChartIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) AdminDarkNavy else Color(0xFF64748B)) },
                     onClick = {
@@ -395,72 +316,243 @@ fun AdminEmployerManagementScreen(
 }
 
 @Composable
-private fun PendingEntityCard(
-    title: String,
-    subtitle: String,
-    poc: String,
-    date: String
+private fun EmployerCard(
+    employer: Map<String, Any>,
+    onApprove: () -> Unit,
+    onReject: () -> Unit
 ) {
+    val companyName = (employer["companyName"] as? String) ?: "Not provided"
+    val industry = (employer["sector"] as? String) ?: (employer["industry"] as? String) ?: "Not provided"
+    val location = (employer["location"] as? String) ?: "Not provided"
+    val contactName = (employer["fullName"] as? String) ?: (employer["contactName"] as? String) ?: "Not provided"
+    val email = (employer["email"] as? String) ?: "Not provided"
+    val phone = (employer["phoneNumber"] as? String) ?: "Not provided"
+    val status = (employer["status"] as? String) ?: "Pending"
+    val createdAt = employer["createdAt"]
+
+    val dateFormatted = remember(createdAt) {
+        val millis = when (createdAt) {
+            is Number -> createdAt.toLong()
+            is String -> createdAt.toLongOrNull() ?: System.currentTimeMillis()
+            else -> System.currentTimeMillis()
+        }
+        try {
+            val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
+            sdf.format(Date(millis))
+        } catch (_: Exception) {
+            "Not provided"
+        }
+    }
+
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {},
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
         color = Color.White,
         border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
         shadowElevation = 2.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy
+                Row(verticalAlignment = Alignment.Top, modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .background(Color(0xFFEFF6FF), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FactoryIcon(modifier = Modifier.size(28.dp), tint = AdminAccentBlue)
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    // Company Information Hierarchy
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "COMPANY INFORMATION",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF64748B),
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = companyName,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AdminDarkNavy
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = industry,
+                            fontSize = 13.sp,
+                            color = Color(0xFF475569)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LocationPinIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = location,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF475569)
+                            )
+                        }
+                    }
+                }
+
+                // Status Indicator Badge
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = when {
+                        status.equals("Approved", ignoreCase = true) -> Color(0xFFDCFCE7)
+                        status.equals("Rejected", ignoreCase = true) -> Color(0xFFFEE2E2)
+                        else -> Color(0xFFEFF6FF)
+                    },
+                    border = BorderStroke(
+                        1.dp,
+                        when {
+                            status.equals("Approved", ignoreCase = true) -> Color(0xFF86EFAC)
+                            status.equals("Rejected", ignoreCase = true) -> Color(0xFFFCA5A5)
+                            else -> Color(0xFFBFDBFE)
+                        }
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                ) {
                     Text(
-                        text = subtitle,
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        text = status,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            status.equals("Approved", ignoreCase = true) -> Color(0xFF166534)
+                            status.equals("Rejected", ignoreCase = true) -> Color(0xFF991B1B)
+                            else -> Color(0xFF1E3A8A)
+                        },
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
-                RightArrowIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF64748B))
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = Color(0xFFF1F5F9))
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // Registration Information Hierarchy
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "POC: $poc",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF475569)
+                    text = "REGISTRATION INFORMATION",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64748B),
+                    letterSpacing = 0.5.sp
                 )
-
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Color(0xFFE0E7FF),
-                    border = BorderStroke(1.dp, Color(0xFFC7D2FE))
-                ) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CalendarIcon(modifier = Modifier.size(15.dp), tint = Color(0xFF64748B))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = date,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF3730A3),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        text = "Submitted $dateFormatted",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF475569)
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Contact Person Hierarchy
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFF8FAFC),
+                border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "CONTACT PERSON",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF64748B),
+                        letterSpacing = 0.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = contactName,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        EmailIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = email,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AdminAccentBlue
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PhoneIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = phone,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF334155)
+                        )
+                    }
+                }
+            }
+
+            if (status.equals("Pending", ignoreCase = true) || status.isBlank()) {
+                Spacer(modifier = Modifier.height(18.dp))
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onApprove,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AdminDarkNavy)
+                    ) {
+                        CheckCircleIcon(modifier = Modifier.size(18.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Approve", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+
+                    OutlinedButton(
+                        onClick = onReject,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+                    ) {
+                        CrossIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F172A))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Reject", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    }
                 }
             }
         }

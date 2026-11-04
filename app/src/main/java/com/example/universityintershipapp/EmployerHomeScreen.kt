@@ -22,19 +22,26 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -56,11 +63,59 @@ fun EmployerHomeScreen(
     companyName: String = "Google LLC",
     onPostInternshipClick: () -> Unit = {},
     onViewApplicantsClick: (String) -> Unit = {},
+    onReviewApplicantClick: () -> Unit = {},
+    onViewAllListingsClick: () -> Unit = {},
     onNavigateApplicants: () -> Unit = {},
     onNavigateProfile: () -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     onLogOutClick: () -> Unit = {}
 ) {
     var selectedBottomNav by remember { mutableIntStateOf(0) }
+    var companyNameState by remember { mutableStateOf(companyName) }
+    var sectorState by remember { mutableStateOf("") }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    var activePostingsCount by remember { mutableStateOf("0") }
+    var applicationsCount by remember { mutableStateOf("0") }
+    var pendingCount by remember { mutableStateOf("0") }
+    var employerListings by remember { mutableStateOf<List<InternshipModel>>(emptyList()) }
+    var allApps by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var recentApplicants by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var unreadCount by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid != null) {
+                val userDoc = FirebaseFirestore.getInstance().collection("users").document(uid).get().await()
+                if (userDoc.exists()) {
+                    val cName = userDoc.getString("companyName") ?: userDoc.getString("fullName")
+                    if (!cName.isNullOrBlank()) companyNameState = cName
+                    val sec = userDoc.getString("sector")
+                    if (!sec.isNullOrBlank()) sectorState = sec
+                }
+
+                // Fetch internships
+                val internships = InternshipRepository.getEmployerInternships(uid)
+                val allInternships = if (internships.isNotEmpty()) internships else InternshipRepository.getInternships()
+                employerListings = allInternships
+                activePostingsCount = allInternships.size.toString()
+
+                // Fetch applications
+                val appsSnapshot = FirebaseFirestore.getInstance().collection("applications").get().await()
+                val apps = appsSnapshot.documents.mapNotNull { it.data }
+                allApps = apps
+                applicationsCount = apps.size.toString()
+                pendingCount = apps.count { (it["status"] as? String)?.equals("Under Review", ignoreCase = true) == true || (it["status"] as? String)?.equals("pending", ignoreCase = true) == true }.toString()
+
+                // Recent applicants
+                recentApplicants = apps.take(5)
+
+                val notifs = NotificationRepository.getNotifications(uid)
+                unreadCount = notifs.count { !it.read }
+            }
+        } catch (_: Exception) {}
+    }
 
     Box(
         modifier = modifier
@@ -77,33 +132,18 @@ fun EmployerHomeScreen(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Company Building Logo Icon
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(Color(0xFF0F2C59), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    BuildingIcon(
-                        modifier = Modifier.size(22.dp),
-                        tint = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = companyName,
+                        text = companyNameState,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0F2C59)
                     )
                     Text(
-                        text = "Employer Recruiter Portal",
+                        text = if (sectorState.isNotBlank()) sectorState else "Connecting organizations with emerging talent.",
                         fontSize = 12.sp,
-                        color = Color(0xFF0F766E),
-                        fontWeight = FontWeight.Bold
+                        color = Color.Black,
+                        fontWeight = FontWeight.Normal
                     )
                 }
 
@@ -111,12 +151,12 @@ fun EmployerHomeScreen(
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .clickable { },
+                        .clickable { onNotificationClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     BellIcon(
                         modifier = Modifier.size(22.dp),
-                        badgeCount = 3,
+                        badgeCount = unreadCount,
                         tint = Color(0xFF0F2C59)
                     )
                 }
@@ -124,16 +164,15 @@ fun EmployerHomeScreen(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 // Logout Button
-                Box(
+                IconButton(
+                    onClick = { showLogoutDialog = true },
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(Color(0xFFFFE4E6), CircleShape)
-                        .clickable { onLogOutClick() },
-                    contentAlignment = Alignment.Center
+                        .size(40.dp)
+                        .background(Color(0xFFEFF6FF), CircleShape)
                 ) {
                     LogoutIcon(
                         modifier = Modifier.size(18.dp),
-                        tint = Color(0xFFDC2626)
+                        tint = Color(0xFF1E3A8A)
                     )
                 }
             }
@@ -151,20 +190,22 @@ fun EmployerHomeScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF0F2C59)
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    shadowElevation = 1.dp
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
-                            text = "Hire Top Student Talent",
+                            text = "Post Internship Opportunities",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color(0xFF0F172A)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Post internship positions, review verified academic credentials, and schedule candidate interviews.",
+                            text = "Create and publish internship opportunities to connect with talented students.",
                             fontSize = 12.sp,
-                            color = Color(0xFFCBD5E1),
+                            color = Color(0xFF334155),
                             lineHeight = 17.sp
                         )
                         Spacer(modifier = Modifier.height(14.dp))
@@ -172,16 +213,16 @@ fun EmployerHomeScreen(
                         Button(
                             onClick = onPostInternshipClick,
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2DD4BF))
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3A8A))
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                PlusIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF0F2C59))
+                                PlusIcon(modifier = Modifier.size(16.dp), tint = Color.White)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Post New Internship",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F2C59)
+                                    color = Color.White
                                 )
                             }
                         }
@@ -207,25 +248,19 @@ fun EmployerHomeScreen(
                     EmployerMetricCard(
                         modifier = Modifier.weight(1f),
                         label = "Active Postings",
-                        count = "6",
-                        subtext = "openings",
-                        icon = { BriefcaseIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F2C59)) }
+                        count = activePostingsCount
                     )
 
                     EmployerMetricCard(
                         modifier = Modifier.weight(1f),
                         label = "Applications",
-                        count = "38",
-                        subtext = "students",
-                        icon = { ApplicationsNavIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F766E)) }
+                        count = applicationsCount
                     )
 
                     EmployerMetricCard(
                         modifier = Modifier.weight(1f),
-                        label = "Interviews",
-                        count = "5",
-                        subtext = "set",
-                        icon = { CalendarIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF1E3A8A)) }
+                        label = "Pending Applications",
+                        count = pendingCount
                     )
                 }
 
@@ -244,35 +279,40 @@ fun EmployerHomeScreen(
                         color = Color(0xFF0F172A)
                     )
                     Text(
-                        text = "View All (6)",
+                        text = "View All (${employerListings.size})",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F766E),
-                        modifier = Modifier.clickable { }
+                        color = Color.Black,
+                        modifier = Modifier.clickable { onViewAllListingsClick() }
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Listing 1
-                EmployerListingCard(
-                    title = "Software Engineering Intern",
-                    locationType = "Mountain View, CA • Hybrid",
-                    applicantsCount = 14,
-                    deadline = "May 15, 2025",
-                    onViewApplicants = { onViewApplicantsClick("SE-01") }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Listing 2
-                EmployerListingCard(
-                    title = "Data Science & AI Intern",
-                    locationType = "New York, NY • On-site",
-                    applicantsCount = 8,
-                    deadline = "June 01, 2025",
-                    onViewApplicants = { onViewApplicantsClick("DS-02") }
-                )
+                if (employerListings.isEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "No active internship listings found.", fontSize = 13.sp, color = Color(0xFF334155))
+                        }
+                    }
+                } else {
+                    employerListings.forEach { job ->
+                        val countForJob = allApps.count { (it["internshipTitle"] as? String)?.equals(job.title, ignoreCase = true) == true }
+                        EmployerListingCard(
+                            title = job.title,
+                            locationType = "${job.location} • ${job.duration}",
+                            applicantsCount = countForJob,
+                            deadline = job.deadline,
+                            onViewApplicants = { onViewApplicantsClick(job.title) }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -286,23 +326,21 @@ fun EmployerHomeScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                ApplicantCard(
-                    studentName = "Gerald Zulumba",
-                    program = "B.Sc. Computer Science (Yr 3)",
-                    gpa = "GPA 3.84",
-                    appliedFor = "Software Engineering Intern",
-                    onReviewClick = { onViewApplicantsClick("SE-01") }
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                ApplicantCard(
-                    studentName = "Alex Chen",
-                    program = "B.Sc. Software Engineering (Yr 3)",
-                    gpa = "GPA 3.90",
-                    appliedFor = "Data Science & AI Intern",
-                    onReviewClick = { onViewApplicantsClick("DS-02") }
-                )
+                if (recentApplicants.isEmpty()) {
+                    Text(text = "No recent applicants yet", fontSize = 13.sp, color = Color(0xFF64748B))
+                } else {
+                    recentApplicants.forEach { app ->
+                        val studentName = app["studentName"] as? String ?: "Student Applicant"
+                        val title = app["internshipTitle"] as? String ?: "Internship Application"
+                        ApplicantCard(
+                            studentName = studentName,
+                            program = title,
+                            appliedFor = title,
+                            onReviewClick = onReviewApplicantClick
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -321,14 +359,14 @@ fun EmployerHomeScreen(
                 BottomNavItem(
                     label = "Dashboard",
                     isSelected = selectedBottomNav == 0,
-                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = { selectedBottomNav = 0 }
                 )
 
                 BottomNavItem(
                     label = "Post Job",
                     isSelected = selectedBottomNav == 1,
-                    icon = { PlusIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { PlusIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 1
                         onPostInternshipClick()
@@ -338,7 +376,7 @@ fun EmployerHomeScreen(
                 BottomNavItem(
                     label = "Applicants",
                     isSelected = selectedBottomNav == 2,
-                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 2
                         onNavigateApplicants()
@@ -348,7 +386,7 @@ fun EmployerHomeScreen(
                 BottomNavItem(
                     label = "Profile",
                     isSelected = selectedBottomNav == 3,
-                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 3
                         onNavigateProfile()
@@ -357,15 +395,42 @@ fun EmployerHomeScreen(
             }
         }
     }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(text = "Log Out", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F2C59))
+            },
+            text = {
+                Text(text = "Are you sure you want to log out?", fontSize = 13.sp, color = Color(0xFF334155))
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        FirebaseAuth.getInstance().signOut()
+                        onLogOutClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F2C59))
+                ) {
+                    Text("Logout")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun EmployerMetricCard(
     modifier: Modifier = Modifier,
     label: String,
-    count: String,
-    subtext: String,
-    icon: @Composable () -> Unit
+    count: String
 ) {
     Card(
         modifier = modifier,
@@ -373,32 +438,15 @@ private fun EmployerMetricCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                icon()
-            }
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
             Spacer(modifier = Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = count,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F2C59)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = subtext,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF334155),
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
-            }
+            Text(
+                text = count,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F2C59)
+            )
         }
     }
 }
@@ -438,22 +486,9 @@ private fun EmployerListingCard(
                         color = Color(0xFF334155)
                     )
                 }
-
-                Surface(
-                    color = Color(0xFFCCFBF1),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text(
-                        text = "Active",
-                        color = Color(0xFF0F766E),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -461,33 +496,25 @@ private fun EmployerListingCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "👥 $applicantsCount Student Applicants",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E3A8A)
-                )
-                Text(
                     text = "Deadline: $deadline",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF334155)
                 )
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = onViewApplicants,
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Text(
-                    text = "View Applicants ($applicantsCount)",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF0F2C59)
-                )
+                Button(
+                    onClick = onViewApplicants,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F2C59)),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text(
+                        text = "View Applicants ($applicantsCount)",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -497,7 +524,6 @@ private fun EmployerListingCard(
 private fun ApplicantCard(
     studentName: String,
     program: String,
-    gpa: String,
     appliedFor: String,
     onReviewClick: () -> Unit
 ) {
@@ -512,52 +538,19 @@ private fun ApplicantCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Profile Icon adjacent to the user
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(Color(0xFFEEF2FF), CircleShape)
-                            .border(1.dp, Color(0xFFC7D2FE), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        PersonIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF1E3A8A))
-                    }
-
-                    Text(
-                        text = studentName,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-
-                    // GPA Pill Badge
-                    Surface(
-                        color = Color(0xFFCCFBF1),
-                        shape = RoundedCornerShape(50),
-                        border = BorderStroke(1.dp, Color(0xFF99F6E4))
-                    ) {
-                        Text(
-                            text = gpa,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F766E),
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = studentName,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = program,
+                    text = program.replace(Regex("\\s*\\(Yr\\s*\\d+\\)"), "").trim(),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF334155)

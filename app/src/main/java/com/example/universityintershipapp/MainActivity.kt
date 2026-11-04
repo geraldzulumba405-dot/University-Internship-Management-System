@@ -8,8 +8,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 enum class AppScreen {
     SPLASH,
@@ -30,7 +35,8 @@ enum class AppScreen {
     ADMIN_DASHBOARD,
     ADMIN_EMPLOYERS,
     ADMIN_INTERNSHIPS,
-    ADMIN_REPORTS
+    ADMIN_REPORTS,
+    NOTIFICATIONS
 }
 
 class MainActivity : ComponentActivity() {
@@ -39,6 +45,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             UniversityIntershipAppTheme {
+                val scope = rememberCoroutineScope()
                 var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
                 var loggedInStudentName by remember { mutableStateOf("Gerald Zulumba") }
                 var loggedInStudentEmail by remember { mutableStateOf("gzulumba@unima.ac.mw") }
@@ -52,6 +59,10 @@ class MainActivity : ComponentActivity() {
                 var loggedInEmployerIndustry by remember { mutableStateOf("Telecommunications & Digital Services") }
                 var loggedInEmployerLocation by remember { mutableStateOf("Blantyre, Malawi") }
 
+                var selectedTitle by remember { mutableStateOf("Software Engineering Intern") }
+                var selectedCompany by remember { mutableStateOf("Google") }
+                var selectedLocation by remember { mutableStateOf("New York, USA") }
+
                 BackHandler(enabled = currentScreen != AppScreen.SPLASH && currentScreen != AppScreen.LOGIN) {
                     when (currentScreen) {
                         AppScreen.REGISTER -> currentScreen = AppScreen.LOGIN
@@ -62,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         AppScreen.ADMIN_EMPLOYERS, AppScreen.ADMIN_INTERNSHIPS, AppScreen.ADMIN_REPORTS -> currentScreen = AppScreen.ADMIN_DASHBOARD
                         AppScreen.SUBMIT_APPLICATION -> currentScreen = AppScreen.STUDENT_APPLICATION
                         AppScreen.APPLICATION_CONFIRMATION -> currentScreen = AppScreen.MY_APPLICATIONS
+                        AppScreen.NOTIFICATIONS -> currentScreen = AppScreen.STUDENT_HOME
                         else -> currentScreen = AppScreen.LOGIN
                     }
                 }
@@ -114,18 +126,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onCreateAccountSuccessWithRole = { role ->
-                                if (role == "admin") {
-                                    currentScreen = AppScreen.ADMIN_DASHBOARD
-                                } else if (role == "employer") {
-                                    currentScreen = AppScreen.EMPLOYER_HOME
-                                } else {
-                                    currentScreen = AppScreen.STUDENT_HOME
-                                }
+                                currentScreen = AppScreen.LOGIN
                             },
                             onCreateAccountSuccess = {
-                                if (currentScreen == AppScreen.REGISTER) {
-                                    currentScreen = AppScreen.STUDENT_HOME
-                                }
+                                currentScreen = AppScreen.LOGIN
                             }
                         )
                     }
@@ -133,22 +137,37 @@ class MainActivity : ComponentActivity() {
                         StudentHomeScreen(
                             studentName = loggedInStudentName,
                             onSearchClick = { currentScreen = AppScreen.STUDENT_SEARCH },
+                            onViewAllRecommended = { currentScreen = AppScreen.STUDENT_SEARCH },
                             onApplicationsClick = { currentScreen = AppScreen.MY_APPLICATIONS },
                             onProfileClick = { currentScreen = AppScreen.STUDENT_PROFILE },
-                            onApplyClick = { currentScreen = AppScreen.STUDENT_APPLICATION }
+                            onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS },
+                            onApplyClick = { title, company, location ->
+                                selectedTitle = title
+                                selectedCompany = company
+                                selectedLocation = location
+                                currentScreen = AppScreen.STUDENT_APPLICATION
+                            }
                         )
                     }
                     AppScreen.STUDENT_SEARCH -> {
-                        StudentSearchScreen(
+                        StudentInternshipScreen(
                             onBackClick = { currentScreen = AppScreen.STUDENT_HOME },
                             onHomeNavClick = { currentScreen = AppScreen.STUDENT_HOME },
                             onApplicationsNavClick = { currentScreen = AppScreen.MY_APPLICATIONS },
                             onProfileNavClick = { currentScreen = AppScreen.STUDENT_PROFILE },
-                            onApplyClick = { currentScreen = AppScreen.STUDENT_APPLICATION }
+                            onApplyClick = { title, company, location ->
+                                selectedTitle = title
+                                selectedCompany = company
+                                selectedLocation = location
+                                currentScreen = AppScreen.STUDENT_APPLICATION
+                            }
                         )
                     }
                     AppScreen.STUDENT_APPLICATION -> {
                         StudentApplicationScreen(
+                            title = selectedTitle,
+                            company = selectedCompany,
+                            location = selectedLocation,
                             onBackClick = { currentScreen = AppScreen.STUDENT_HOME },
                             onOneTapApplyClick = { currentScreen = AppScreen.SUBMIT_APPLICATION }
                         )
@@ -157,7 +176,43 @@ class MainActivity : ComponentActivity() {
                         SubmitApplicationScreen(
                             onCloseClick = { currentScreen = AppScreen.STUDENT_APPLICATION },
                             onSaveDraftClick = { currentScreen = AppScreen.MY_APPLICATIONS },
-                            onSubmitApplicationClick = { currentScreen = AppScreen.APPLICATION_CONFIRMATION }
+                            onSubmitApplicationClick = {
+                                val uid = FirebaseAuth.getInstance().currentUser?.uid
+                                if (uid != null) {
+                                    val appData = hashMapOf(
+                                        "studentUid" to uid,
+                                        "internshipTitle" to selectedTitle,
+                                        "company" to selectedCompany,
+                                        "location" to selectedLocation,
+                                        "status" to "Under Review",
+                                        "createdAt" to System.currentTimeMillis()
+                                    )
+                                    FirebaseFirestore.getInstance().collection("applications").add(appData)
+
+                                    scope.launch {
+                                        try {
+                                            val employersSnap = FirebaseFirestore.getInstance().collection("users")
+                                                .whereEqualTo("role", "employer")
+                                                .get()
+                                                .await()
+                                            val employerDoc = employersSnap.documents.find {
+                                                (it.getString("companyName") ?: "").equals(selectedCompany, ignoreCase = true)
+                                            } ?: employersSnap.documents.firstOrNull()
+
+                                            if (employerDoc != null) {
+                                                val employerUid = employerDoc.id
+                                                NotificationRepository.sendNotification(
+                                                    recipientUserId = employerUid,
+                                                    title = "New Application Received",
+                                                    message = "$loggedInStudentName applied for $selectedTitle.",
+                                                    type = "application"
+                                                )
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+                                }
+                                currentScreen = AppScreen.APPLICATION_CONFIRMATION
+                            }
                         )
                     }
                     AppScreen.APPLICATION_CONFIRMATION -> {
@@ -190,9 +245,12 @@ class MainActivity : ComponentActivity() {
                         EmployerHomeScreen(
                             companyName = loggedInEmployerCompanyName,
                             onPostInternshipClick = { currentScreen = AppScreen.POST_INTERNSHIP },
-                            onViewApplicantsClick = { currentScreen = AppScreen.EMPLOYER_APPLICATION_REVIEW },
+                            onViewApplicantsClick = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
+                            onReviewApplicantClick = { currentScreen = AppScreen.EMPLOYER_APPLICATION_REVIEW },
+                            onViewAllListingsClick = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateApplicants = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateProfile = { currentScreen = AppScreen.EMPLOYER_PROFILE },
+                            onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS },
                             onLogOutClick = { currentScreen = AppScreen.LOGIN }
                         )
                     }
@@ -214,6 +272,8 @@ class MainActivity : ComponentActivity() {
                     AppScreen.EMPLOYER_APPLICATION_REVIEW -> {
                         EmployerApplicationReview(
                             onBackClick = { currentScreen = AppScreen.EMPLOYER_HOME },
+                            onAcceptSuccess = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
+                            onRejectSuccess = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateHome = { currentScreen = AppScreen.EMPLOYER_HOME },
                             onNavigatePostJob = { currentScreen = AppScreen.POST_INTERNSHIP },
                             onNavigateApplications = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
@@ -239,6 +299,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateEmployers = { currentScreen = AppScreen.ADMIN_EMPLOYERS },
                             onNavigateInternships = { currentScreen = AppScreen.ADMIN_INTERNSHIPS },
                             onNavigateReports = { currentScreen = AppScreen.ADMIN_REPORTS },
+                            onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS },
                             onLogOut = { currentScreen = AppScreen.LOGIN }
                         )
                     }
@@ -262,6 +323,13 @@ class MainActivity : ComponentActivity() {
                             onNavigateEmployers = { currentScreen = AppScreen.ADMIN_EMPLOYERS },
                             onNavigateInternships = { currentScreen = AppScreen.ADMIN_INTERNSHIPS },
                             onLogOut = { currentScreen = AppScreen.LOGIN }
+                        )
+                    }
+                    AppScreen.NOTIFICATIONS -> {
+                        NotificationScreen(
+                            onBackClick = {
+                                currentScreen = AppScreen.STUDENT_HOME
+                            }
                         )
                     }
                 }

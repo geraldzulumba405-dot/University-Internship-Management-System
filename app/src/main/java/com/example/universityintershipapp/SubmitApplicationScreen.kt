@@ -23,13 +23,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,9 +48,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
-private val NavyPrimaryContainer = Color(0xFFEFF6FF)
-private val OutlineBorder = Color(0xFFE2E8F0)
 private val MintSuccessContainer = Color(0xFFCCFBF1)
 private val RedAccent = Color(0xFFE11D48)
 private val RedAccentContainer = Color(0xFFFFE4E6)
@@ -54,10 +59,77 @@ private val RedAccentContainer = Color(0xFFFFE4E6)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubmitApplicationScreen(
+    title: String = "Software Engineering Intern",
+    company: String = "Google LLC",
+    location: String = "Mountain View, CA (Hybrid)",
     onCloseClick: () -> Unit = {},
     onSaveDraftClick: () -> Unit = {},
     onSubmitApplicationClick: () -> Unit = {}
 ) {
+    var studentNameState by remember { mutableStateOf("Alex Chen") }
+    var studentIdState by remember { mutableStateOf("U2021-0842") }
+    var programmeState by remember { mutableStateOf("B.Sc. Computer Science (Yr 3)") }
+
+    var internshipTitleState by remember { mutableStateOf(title) }
+    var companyState by remember { mutableStateOf(company) }
+    var locationState by remember { mutableStateOf(location) }
+    var deadlineState by remember { mutableStateOf("May 15, 2025") }
+
+    var uploadedDocuments by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var isLoadingDocs by remember { mutableStateOf(true) }
+    var isAvailable by remember { mutableStateOf(true) }
+
+    LaunchedEffect(title) {
+        isLoadingDocs = true
+        try {
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid != null) {
+                val userDoc = FirebaseFirestore.getInstance().collection("users").document(uid).get().await()
+                if (userDoc.exists()) {
+                    val name = userDoc.getString("fullName") ?: userDoc.getString("studentName")
+                    if (!name.isNullOrBlank()) studentNameState = name
+                    val sid = userDoc.getString("studentId")
+                    if (!sid.isNullOrBlank()) studentIdState = sid
+                    val prog = userDoc.getString("programme")
+                    val year = userDoc.getString("yearOfStudy")
+                    if (!prog.isNullOrBlank()) {
+                        programmeState = if (!year.isNullOrBlank()) "$prog ($year)" else prog
+                    }
+
+                    val docs = userDoc.get("documents") as? List<*>
+                    if (docs != null) {
+                        uploadedDocuments = docs.mapNotNull { item ->
+                            val map = item as? Map<*, *>
+                            val docTitle = map?.get("title") as? String ?: "Document"
+                            val subtitle = map?.get("subtitle") as? String ?: "Uploaded"
+                            docTitle to subtitle
+                        }
+                    }
+                }
+            }
+
+            val jobs = InternshipRepository.getInternships()
+            if (jobs.isEmpty()) {
+                isAvailable = false
+            } else {
+                val match = jobs.find { it.title.equals(title, ignoreCase = true) }
+                if (match != null) {
+                    if (match.title.isNotBlank()) internshipTitleState = match.title
+                    if (match.companyName.isNotBlank()) companyState = match.companyName
+                    if (match.location.isNotBlank()) locationState = match.location
+                    if (match.deadline.isNotBlank()) deadlineState = match.deadline
+                    isAvailable = true
+                } else {
+                    isAvailable = true
+                }
+            }
+        } catch (_: Exception) {
+            isAvailable = true
+        } finally {
+            isLoadingDocs = false
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -69,11 +141,6 @@ fun SubmitApplicationScreen(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
-                        Text(
-                            text = "UniIntern Portal • Step 2 of 2",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
                     }
                 },
                 navigationIcon = {
@@ -81,77 +148,9 @@ fun SubmitApplicationScreen(
                         CloseIcon(modifier = Modifier.size(20.dp), tint = TextPrimary)
                     }
                 },
-                actions = {
-                    Surface(
-                        color = NavyPrimaryContainer,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.padding(end = 12.dp)
-                    ) {
-                        Text(
-                            text = "Draft Saved",
-                            color = NavyPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                },
+                actions = {},
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBackground)
             )
-        },
-        bottomBar = {
-            Surface(
-                color = CardBackground,
-                shadowElevation = 8.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(
-                        onClick = onSaveDraftClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, OutlineBorder)
-                    ) {
-                        Text(
-                            text = "Save Draft",
-                            color = TextSecondary,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    Button(
-                        onClick = onSubmitApplicationClick,
-                        modifier = Modifier
-                            .weight(2f)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Submit Application",
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            RightArrowIcon(
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
-            }
         },
         containerColor = SurfaceBackground
     ) { paddingValues ->
@@ -163,362 +162,219 @@ fun SubmitApplicationScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Internship Header Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = BorderStroke(1.dp, OutlineBorder)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            if (isLoadingDocs) {
+                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text(text = "Loading application details...", fontSize = 13.sp, color = TextSecondary)
+                }
+            } else if (!isAvailable) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = CardBackground,
+                    border = BorderStroke(1.dp, OutlineVariant)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Surface(
-                            color = MintSuccessContainer,
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text(
-                                text = "INTERNSHIP",
-                                color = MintSuccess,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
                         Text(
-                            text = "Deadline: May 15, 2025",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            text = "No application to submit",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Software Engineering Intern",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Google LLC • Mountain View, CA (Hybrid)",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
                 }
-            }
-
-            // 2. Verified Academic Profile Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = BorderStroke(1.dp, OutlineBorder)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            SchoolIcon(
-                                modifier = Modifier.size(20.dp),
-                                tint = NavyPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+            } else {
+                // 1. Internship Header Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    border = BorderStroke(1.dp, OutlineVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "Verified Academic Profile",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                text = "Deadline: $deadlineState",
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
-                        Surface(
-                            color = MintSuccessContainer,
-                            shape = RoundedCornerShape(20.dp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = internshipTitleState,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "$companyState • $locationState",
+                            fontSize = 13.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                // 2. Verified Academic Profile Section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    border = BorderStroke(1.dp, OutlineVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                VerifiedUserIcon(
-                                    modifier = Modifier.size(13.dp),
-                                    tint = MintSuccess
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Registrar Approved",
-                                    color = MintSuccess,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = "Academic Profile",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                            }
+
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(text = "Student Name", fontSize = 11.sp, color = TextSecondary)
+                                Text(
+                                    text = studentNameState,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.Start) {
+                                Text(text = "Student ID", fontSize = 11.sp, color = TextSecondary)
+                                Text(
+                                    text = studentIdState,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Program of Study", fontSize = 11.sp, color = TextSecondary)
+                                Text(
+                                    text = programmeState,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
                                 )
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Student Name", fontSize = 11.sp, color = TextSecondary)
-                            Text(
-                                text = "Alex Chen",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Student ID", fontSize = 11.sp, color = TextSecondary)
-                            Text(
-                                text = "U2021-0842",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1.3f)) {
-                            Text(text = "Degree & Major", fontSize = 11.sp, color = TextSecondary)
-                            Text(
-                                text = "B.Sc. Computer Science (Yr 3)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
-                        }
-                        Column(modifier = Modifier.weight(0.7f)) {
-                            Text(text = "Cumulative GPA", fontSize = 11.sp, color = TextSecondary)
-                            Text(
-                                text = "3.84 / 4.00",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NavyPrimary
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 3. Required Credentials & Attached Documents
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Required Credentials (2 files attached)",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                // Document 1: Resume
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = BorderStroke(1.dp, OutlineBorder)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(RedAccentContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            DescriptionIcon(
-                                modifier = Modifier.size(22.dp),
-                                tint = RedAccent
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Resume_Alex_Chen_2025.pdf",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "1.2 MB • Uploaded May 10, 2025",
-                                fontSize = 11.sp,
-                                color = TextSecondary
-                            )
-                        }
-                        CheckCircleIcon(
-                            modifier = Modifier.size(20.dp),
-                            tint = MintSuccess
-                        )
-                    }
                 }
 
-                // Document 2: Official Transcript
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = BorderStroke(1.dp, OutlineBorder)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(NavyPrimaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            SchoolIcon(
-                                modifier = Modifier.size(22.dp),
-                                tint = NavyPrimary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Official_Transcript_Verified.pdf",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Verified directly by Registrar System",
-                                fontSize = 11.sp,
-                                color = MintSuccess,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        CheckCircleIcon(
-                            modifier = Modifier.size(20.dp),
-                            tint = MintSuccess
-                        )
-                    }
-                }
-            }
-
-            // 4. Academic Credit Notice
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = NavyPrimaryContainer.copy(alpha = 0.5f)),
-                border = BorderStroke(1.dp, OutlineBorder)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    InfoNoticeIcon(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .padding(top = 2.dp),
-                        tint = NavyPrimary
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
+                // 3. Required Credentials & Attached Documents
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "By submitting, your academic profile and credentials will be transmitted directly to Google LLC and logged with your university internship supervisor.",
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        lineHeight = 17.sp
+                        text = "Required Credentials (${uploadedDocuments.size} files attached)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
                     )
+
+                    if (uploadedDocuments.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            border = BorderStroke(1.dp, OutlineVariant)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "No documents uploaded in profile yet.",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    } else {
+                        uploadedDocuments.forEach { (docTitle, docSubtitle) ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                                border = BorderStroke(1.dp, OutlineVariant)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = docTitle,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = docSubtitle,
+                                            fontSize = 11.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onSubmitApplicationClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Text(
+                            text = "Submit Application",
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        RightArrowIcon(
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
         }
-    }
-}
-
-@Composable
-fun SchoolIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = NavyPrimary
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        val capTop = Path().apply {
-            moveTo(w * 0.5f, h * 0.15f)
-            lineTo(w * 0.9f, h * 0.38f)
-            lineTo(w * 0.5f, h * 0.60f)
-            lineTo(w * 0.1f, h * 0.38f)
-            close()
-        }
-        drawPath(capTop, color = tint)
-
-        val capBottom = Path().apply {
-            moveTo(w * 0.25f, h * 0.48f)
-            lineTo(w * 0.25f, h * 0.68f)
-            cubicTo(w * 0.25f, h * 0.82f, w * 0.75f, h * 0.82f, w * 0.75f, h * 0.68f)
-            lineTo(w * 0.75f, h * 0.48f)
-            close()
-        }
-        drawPath(capBottom, color = tint)
-    }
-}
-
-@Composable
-fun VerifiedUserIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = MintSuccess
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        val shield = Path().apply {
-            moveTo(w * 0.5f, h * 0.15f)
-            lineTo(w * 0.85f, h * 0.28f)
-            lineTo(w * 0.85f, h * 0.55f)
-            cubicTo(w * 0.85f, h * 0.78f, w * 0.5f, h * 0.88f, w * 0.5f, h * 0.88f)
-            cubicTo(w * 0.5f, h * 0.88f, w * 0.15f, h * 0.78f, w * 0.15f, h * 0.55f)
-            lineTo(w * 0.15f, h * 0.28f)
-            close()
-        }
-        drawPath(shield, color = tint)
-
-        val check = Path().apply {
-            moveTo(w * 0.35f, h * 0.50f)
-            lineTo(w * 0.48f, h * 0.62f)
-            lineTo(w * 0.68f, h * 0.40f)
-        }
-        drawPath(check, color = Color.White, style = Stroke(width = w * 0.10f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
-
-@Composable
-fun DescriptionIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = RedAccent
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        val doc = Path().apply {
-            moveTo(w * 0.22f, h * 0.15f)
-            lineTo(w * 0.78f, h * 0.15f)
-            lineTo(w * 0.78f, h * 0.85f)
-            lineTo(w * 0.22f, h * 0.85f)
-            close()
-        }
-        drawPath(doc, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.35f), end = Offset(w * 0.65f, h * 0.35f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.50f), end = Offset(w * 0.65f, h * 0.50f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.65f), end = Offset(w * 0.52f, h * 0.65f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
     }
 }
 

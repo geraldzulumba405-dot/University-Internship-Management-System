@@ -7,13 +7,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,13 +22,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +55,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
 private val AdminRedAlert = Color(0xFFDC2626)
@@ -59,9 +68,82 @@ fun AdminDashboardScreen(
     onNavigateEmployers: () -> Unit = {},
     onNavigateInternships: () -> Unit = {},
     onNavigateReports: () -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     onLogOut: () -> Unit = {}
 ) {
     var selectedBottomNav by remember { mutableIntStateOf(0) }
+
+    var totalStudents by remember { mutableStateOf("...") }
+    var totalEmployers by remember { mutableStateOf("...") }
+    var pendingEmployers by remember { mutableStateOf("...") }
+    var pendingPostings by remember { mutableStateOf("...") }
+    var openReports by remember { mutableStateOf("...") }
+    var unreadCount by remember { mutableIntStateOf(0) }
+    var recentActivities by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val db = FirebaseFirestore.getInstance()
+
+            // 1. Total Students
+            val studentsSnap = db.collection("users").whereEqualTo("role", "student").get().await()
+            totalStudents = studentsSnap.size().toString()
+
+            // 2. Total Employers
+            val employersSnap = db.collection("users").whereEqualTo("role", "employer").get().await()
+            val employerDocs = employersSnap.documents
+            totalEmployers = employerDocs.size.toString()
+
+            // 3. Pending Employers
+            val pendingEmpCount = employerDocs.count { doc ->
+                val verified = doc.getBoolean("isVerified") ?: false
+                val status = doc.getString("status") ?: ""
+                !verified || status.equals("Pending", ignoreCase = true)
+            }
+            pendingEmployers = pendingEmpCount.toString()
+
+            // 4. Pending Postings
+            val internshipsSnap = db.collection("internships").get().await()
+            val internshipDocs = internshipsSnap.documents
+            val pendingPostCount = internshipDocs.count { doc ->
+                val status = doc.getString("status") ?: ""
+                status.equals("Pending", ignoreCase = true) || status.equals("pending", ignoreCase = true)
+            }
+            pendingPostings = pendingPostCount.toString()
+
+            // 5. Open Reports
+            var reportsCount = 0
+            try {
+                val reportsSnap = db.collection("reports").get().await()
+                reportsCount = reportsSnap.size()
+            } catch (_: Exception) {
+                reportsCount = 0
+            }
+            openReports = reportsCount.toString()
+
+            // Recent activity from activity_logs if exists
+            try {
+                val uid = FirebaseAuth.getInstance().currentUser?.uid
+                if (uid != null) {
+                    val notifs = NotificationRepository.getNotifications(uid)
+                    unreadCount = notifs.count { !it.read }
+                }
+
+                val activitySnap = db.collection("activity_logs").orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(3).get().await()
+                if (!activitySnap.isEmpty) {
+                    recentActivities = activitySnap.documents.mapNotNull { it.data }
+                }
+            } catch (_: Exception) {}
+
+        } catch (_: Exception) {
+            totalStudents = "0"
+            totalEmployers = "0"
+            pendingEmployers = "0"
+            pendingPostings = "0"
+            openReports = "0"
+        }
+    }
 
     Box(
         modifier = modifier
@@ -88,7 +170,7 @@ fun AdminDashboardScreen(
                             color = AdminDarkNavy
                         )
                         Text(
-                            text = "University of Malawi Admin Console",
+                            text = "University of Malawi Admin Portal",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF334155)
@@ -96,18 +178,33 @@ fun AdminDashboardScreen(
                     }
                 }
 
-                Box(modifier = Modifier.padding(end = 4.dp)) {
-                    IconButton(onClick = {}) {
-                        BellIcon(modifier = Modifier.size(24.dp), tint = AdminDarkNavy)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onNotificationClick) {
+                        BellIcon(
+                            modifier = Modifier.size(24.dp),
+                            badgeCount = unreadCount,
+                            tint = AdminDarkNavy
+                        )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(9.dp)
-                            .clip(CircleShape)
-                            .background(AdminRedAlert)
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-8).dp, y = 8.dp)
-                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = { showLogoutDialog = true },
+                        modifier = Modifier.height(36.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B3B80)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        LogoutIcon(modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Logout",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
@@ -131,7 +228,8 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Metrics Grid Row 1
+                // Dashboard Statistics Grid (2 columns, final card full width)
+                // Row 1
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -139,19 +237,19 @@ fun AdminDashboardScreen(
                     AdminMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Total Students",
-                        value = "1,180"
+                        value = totalStudents
                     )
 
                     AdminMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Total Employers",
-                        value = "68"
+                        value = totalEmployers
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Metrics Grid Row 2
+                // Row 2
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -159,37 +257,32 @@ fun AdminDashboardScreen(
                     AdminMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Pending Employers",
-                        value = "6",
+                        value = pendingEmployers,
                         onClick = onNavigateEmployers
                     )
 
                     AdminMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "Pending Postings",
-                        value = "9",
+                        value = pendingPostings,
                         onClick = onNavigateInternships
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Metrics Row 3: Open Reports
-                Row(
-                    modifier = Modifier.fillMaxWidth(0.5f),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    AdminMetricCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        title = "Open Reports",
-                        value = "3",
-                        accentLineColor = AdminRedAlert,
-                        onClick = onNavigateReports
-                    )
-                }
+                // Row 3: Open Reports (Full Width)
+                AdminMetricCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = "Open Reports",
+                    value = openReports,
+                    accentLineColor = AdminRedAlert,
+                    onClick = onNavigateReports
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Pending Actions Section
+                // Pending Actions Section (Simplified to 3 concise cards)
                 Text(
                     text = "Pending Actions",
                     fontSize = 17.sp,
@@ -200,21 +293,28 @@ fun AdminDashboardScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 PendingActionCard(
-                    title = "Review 6 Pending Employers",
-                    subtitle = "Illovo Sugar, FDH Holdings, Nico Holdings",
-                    statusText = "Awaiting accreditation check",
-                    actionText = "Start Vetting",
+                    title = "Employer Approvals ($pendingEmployers)",
+                    subtitle = "Employer accounts awaiting review.",
+                    statusText = "Awaiting review",
                     onClick = onNavigateEmployers
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 PendingActionCard(
-                    title = "Review 9 Pending Internships",
-                    subtitle = "TNM Systems Admin, Airtel Mobile Dev, RBM Analyst",
-                    statusText = "Department alignment check",
-                    actionText = "Review Listings",
+                    title = "Internship Postings ($pendingPostings)",
+                    subtitle = "Internship listings awaiting review.",
+                    statusText = "Awaiting review",
                     onClick = onNavigateInternships
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                PendingActionCard(
+                    title = "Open Reports ($openReports)",
+                    subtitle = "Reports requiring administrative attention.",
+                    statusText = "Unresolved reports",
+                    onClick = onNavigateReports
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -237,22 +337,28 @@ fun AdminDashboardScreen(
                     shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        ActivityItem(
-                            boldText = "Illovo Sugar Malawi Plc",
-                            normalText = " uploaded PACRA registration documents.",
-                            timestamp = "15m ago • Compliance Desk"
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            color = Color(0xFFF1F5F9)
-                        )
-
-                        ActivityItem(
-                            boldText = "National Bank of Malawi",
-                            normalText = " approved by Dean of Science.",
-                            timestamp = "Yesterday • Institutional Clearance"
-                        )
+                        if (recentActivities.isEmpty()) {
+                            Text(
+                                text = "No activity log collection exists in Firestore yet. Administrative actions are tracked via management pipelines.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 16.sp
+                            )
+                        } else {
+                            recentActivities.forEachIndexed { index, act ->
+                                ActivityItem(
+                                    boldText = act["title"] as? String ?: "Activity",
+                                    normalText = " ${act["description"] ?: ""}",
+                                    timestamp = "Recently"
+                                )
+                                if (index < recentActivities.size - 1) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 12.dp),
+                                        color = Color(0xFFF1F5F9)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -298,7 +404,7 @@ fun AdminDashboardScreen(
                 )
 
                 AdminBottomNavItem(
-                    label = "Reports",
+                    label = "Accounts",
                     isSelected = selectedBottomNav == 3,
                     icon = { BarChartIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) AdminDarkNavy else Color(0xFF64748B)) },
                     onClick = {
@@ -308,6 +414,35 @@ fun AdminDashboardScreen(
                 )
             }
         }
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(text = "Log Out", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
+            },
+            text = {
+                Text(text = "Are you sure you want to log out?", fontSize = 13.sp, color = Color(0xFF334155))
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        FirebaseAuth.getInstance().signOut()
+                        onLogOut()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B3B80))
+                ) {
+                    Text("Logout")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -362,7 +497,6 @@ private fun PendingActionCard(
     title: String,
     subtitle: String,
     statusText: String,
-    actionText: String,
     onClick: () -> Unit
 ) {
     Surface(
@@ -387,8 +521,7 @@ private fun PendingActionCard(
                     text = subtitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF334155),
-                    lineHeight = 16.sp
+                    color = Color(0xFF475569)
                 )
             }
 
@@ -407,19 +540,8 @@ private fun PendingActionCard(
                     text = statusText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF334155)
+                    color = Color(0xFF64748B)
                 )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = actionText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    RightArrowIcon(modifier = Modifier.size(14.dp), tint = AdminDarkNavy)
-                }
             }
         }
     }

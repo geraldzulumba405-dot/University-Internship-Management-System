@@ -29,6 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -41,7 +42,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -55,6 +58,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import android.app.DatePickerDialog
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -64,25 +72,19 @@ fun PostInternshipScreen(
     onPostSuccess: () -> Unit = {},
 ) {
     // 1. Form States
-    var title by remember { mutableStateOf("Full Stack Web Developer Intern") }
-    var fieldOfStudy by remember { mutableStateOf("Computer Science & Software Eng") }
-    var location by remember { mutableStateOf("Chicago, IL (Hybrid / 2 days in office)") }
-    var duration by remember { mutableStateOf("12 Weeks (Summer 2025)") }
-    var deadline by remember { mutableStateOf("June 1, 2025") }
+    var title by remember { mutableStateOf("") }
+    var fieldOfStudy by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+    var duration by remember { mutableStateOf("") }
+    var deadline by remember { mutableStateOf("") }
+    var workMode by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
-    var fieldDropdownExpanded by remember { mutableStateOf(false) }
-
-    val fieldOptions = listOf(
-        "Computer Science & Software Eng",
-        "Information Technology & Data",
-        "Business & Financial Analytics",
-        "Electrical & Computer Engineering",
-        "Healthcare & Life Sciences"
-    )
+    val workModeOptions = listOf("On-site", "Remote", "Hybrid")
+    var workModeDropdownExpanded by remember { mutableStateOf(false) }
 
     val skillsList = remember {
-        mutableStateListOf("React.js", "Node.js", "PostgreSQL", "REST APIs")
+        mutableStateListOf<String>()
     }
     var showAddSkillField by remember { mutableStateOf(false) }
     var newSkillText by remember { mutableStateOf("") }
@@ -90,6 +92,72 @@ fun PostInternshipScreen(
     var reqTranscript by remember { mutableStateOf(true) }
     var reqResume by remember { mutableStateOf(true) }
     var reqPortfolio by remember { mutableStateOf(true) }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val calendar = Calendar.getInstance()
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val selectedDate = Calendar.getInstance().apply {
+                    set(year, month, dayOfMonth)
+                }
+                val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
+                deadline = dateFormat.format(selectedDate.time)
+                showDatePicker = false
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).apply {
+            setOnCancelListener { showDatePicker = false }
+        }.show()
+    }
+
+    fun submitPost() {
+        when {
+            title.isBlank() -> errorMessage = "Please enter an internship title."
+            fieldOfStudy.isBlank() -> errorMessage = "Please select a field of study."
+            location.isBlank() -> errorMessage = "Please enter the internship location."
+            duration.isBlank() -> errorMessage = "Please enter the internship duration."
+            deadline.isBlank() -> errorMessage = "Please enter an application deadline."
+            workMode.isBlank() -> errorMessage = "Please select a work mode."
+            !isLoading -> {
+                isLoading = true
+                errorMessage = null
+                scope.launch {
+                    val res = InternshipRepository.postInternship(
+                        title = title,
+                        fieldOfStudy = fieldOfStudy,
+                        location = location,
+                        duration = duration,
+                        deadline = deadline,
+                        description = description,
+                        skills = skillsList.toList(),
+                        reqTranscript = reqTranscript,
+                        reqResume = reqResume,
+                        reqPortfolio = reqPortfolio,
+                        workMode = workMode
+                    )
+                    isLoading = false
+                    when (res) {
+                        is InternshipResult.Success -> {
+                            onPostSuccess()
+                        }
+                        is InternshipResult.Error -> {
+                            errorMessage = res.message
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     val darkNavy = Color(0xFF0F2C59)
     val textBlack = Color(0xFF000000)
@@ -133,11 +201,6 @@ fun PostInternshipScreen(
                         fontWeight = FontWeight.Bold,
                         color = darkNavy
                     )
-                    Text(
-                        text = "UniIntern Partner Portal",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B)
-                    )
                 }
             }
 
@@ -171,61 +234,28 @@ fun PostInternshipScreen(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        placeholder = { Text("e.g. Software Engineering Intern", color = textPlaceholderGrey, fontSize = 14.sp) },
+                        placeholder = { Text("Software Engineering Intern", color = textPlaceholderGrey, fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,
                         colors = formTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Displayed prominently to engineering & IT students.",
-                        fontSize = 12.sp,
-                        color = textHelperGrey
-                    )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // Field / Area of Study
                     FormLabel("Field / Area of Study")
                     Spacer(modifier = Modifier.height(6.dp))
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = fieldOfStudy,
-                            onValueChange = {},
-                            readOnly = true,
-                            placeholder = { Text("Select area of study", color = textPlaceholderGrey, fontSize = 14.sp) },
-                            trailingIcon = {
-                                Box(
-                                    modifier = Modifier.clickable { fieldDropdownExpanded = !fieldDropdownExpanded },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    DownChevronIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B))
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { fieldDropdownExpanded = true },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = formTextFieldColors()
-                        )
-
-                        DropdownMenu(
-                            expanded = fieldDropdownExpanded,
-                            onDismissRequest = { fieldDropdownExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.85f)
-                        ) {
-                            fieldOptions.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option, fontSize = 14.sp, color = textBlack) },
-                                    onClick = {
-                                        fieldOfStudy = option
-                                        fieldDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    OutlinedTextField(
+                        value = fieldOfStudy,
+                        onValueChange = { fieldOfStudy = it },
+                        placeholder = { Text("Computer Science & Software Engineering", color = textPlaceholderGrey, fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true,
+                        colors = formTextFieldColors()
+                    )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -235,8 +265,7 @@ fun PostInternshipScreen(
                     OutlinedTextField(
                         value = location,
                         onValueChange = { location = it },
-                        placeholder = { Text("e.g. Chicago, IL (Hybrid)", color = textPlaceholderGrey, fontSize = 14.sp) },
-                        leadingIcon = { LocationPinIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B)) },
+                        placeholder = { Text("Lilongwe, Malawi", color = textPlaceholderGrey, fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,
@@ -251,13 +280,58 @@ fun PostInternshipScreen(
                     OutlinedTextField(
                         value = duration,
                         onValueChange = { duration = it },
-                        placeholder = { Text("e.g. 12 Weeks (Summer 2025)", color = textPlaceholderGrey, fontSize = 14.sp) },
-                        leadingIcon = { ClockIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B)) },
+                        placeholder = { Text("12 Weeks", color = textPlaceholderGrey, fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,
                         colors = formTextFieldColors()
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Work Mode *
+                    FormLabel("Work Mode *")
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = workMode,
+                            onValueChange = {},
+                            readOnly = true,
+                            placeholder = { Text("Select work mode", color = textPlaceholderGrey, fontSize = 14.sp) },
+                            trailingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .clickable { workModeDropdownExpanded = !workModeDropdownExpanded }
+                                        .padding(12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    DownChevronIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF64748B))
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { workModeDropdownExpanded = true },
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true,
+                            colors = formTextFieldColors()
+                        )
+
+                        DropdownMenu(
+                            expanded = workModeDropdownExpanded,
+                            onDismissRequest = { workModeDropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            workModeOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option, fontSize = 14.sp, color = Color(0xFF000000)) },
+                                    onClick = {
+                                        workMode = option
+                                        workModeDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -267,8 +341,17 @@ fun PostInternshipScreen(
                     OutlinedTextField(
                         value = deadline,
                         onValueChange = { deadline = it },
-                        placeholder = { Text("e.g. June 1, 2025", color = textPlaceholderGrey, fontSize = 14.sp) },
-                        leadingIcon = { CalendarIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B)) },
+                        placeholder = { Text("June 1, 2026", color = textPlaceholderGrey, fontSize = 14.sp) },
+                        trailingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .clickable { showDatePicker = true }
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CalendarIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF64748B))
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,
@@ -280,10 +363,7 @@ fun PostInternshipScreen(
                 SectionCardContainer {
                     SectionHeader(
                         number = "2",
-                        title = "Role Description",
-                        tagText = "Markdown supported",
-                        tagBgColor = Color(0xFFF1F5F9),
-                        tagTextColor = Color(0xFF475569)
+                        title = "Role Description"
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -294,7 +374,7 @@ fun PostInternshipScreen(
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        placeholder = { Text("", color = textPlaceholderGrey) },
+                        placeholder = { Text("Briefly describe the internship role, key responsibilities and expected deliverables...", color = textPlaceholderGrey, fontSize = 13.sp) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(130.dp),
@@ -305,7 +385,7 @@ fun PostInternshipScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    val wordCount = if (description.isBlank()) 48 else description.trim().split("\\s+".toRegex()).size
+                    val wordCount = if (description.isBlank()) 0 else description.trim().split("\\s+".toRegex()).size
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -330,8 +410,8 @@ fun PostInternshipScreen(
                         number = "3",
                         title = "Required Skills & Competencies",
                         tagText = "${skillsList.size} Added",
-                        tagBgColor = Color(0xFFECFDF5),
-                        tagTextColor = Color(0xFF047857)
+                        tagBgColor = Color(0xFFEFF6FF),
+                        tagTextColor = Color(0xFF1E3A8A)
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -459,7 +539,23 @@ fun PostInternshipScreen(
                     )
                 }
 
-
+                // Error Message Banner
+                errorMessage?.let { errorText ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFFEF2F2),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color(0xFFFECACA))
+                    ) {
+                        Text(
+                            text = errorText,
+                            fontSize = 13.sp,
+                            color = Color(0xFFB91C1C),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -475,28 +571,47 @@ fun PostInternshipScreen(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
                 ) {
                     Button(
-                        onClick = { onPostSuccess() },
+                        onClick = { submitPost() },
+                        enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = darkNavy)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = darkNavy,
+                            disabledContainerColor = Color(0xFF94A3B8)
+                        )
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            PaperPlaneIcon(
-                                modifier = Modifier.size(18.dp),
-                                tint = Color.White
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = Color.White,
+                                strokeWidth = 2.5.dp
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Post Internship",
-                                fontSize = 16.sp,
+                                text = "Posting Internship...",
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                PaperPlaneIcon(
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Post Internship",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }

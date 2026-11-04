@@ -1,5 +1,9 @@
 package com.example.universityintershipapp
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -31,10 +35,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -57,6 +68,8 @@ import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 fun EmployerApplicationReview(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
+    onAcceptSuccess: () -> Unit = {},
+    onRejectSuccess: () -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigatePostJob: () -> Unit = {},
     onNavigateApplications: () -> Unit = {},
@@ -64,6 +77,77 @@ fun EmployerApplicationReview(
 ) {
     var selectedTab by remember { mutableIntStateOf(1) } // 0: All, 1: Pending, 2: Accepted, 3: Rejected
     var selectedBottomNav by remember { mutableIntStateOf(2) } // Applications tab selected
+    val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
+    var applicationStatus by remember { mutableStateOf("PENDING REVIEW") }
+    var currentAppDocId by remember { mutableStateOf<String?>(null) }
+    var internshipTitleState by remember { mutableStateOf("Full Stack Web Developer") }
+    var workModeState by remember { mutableStateOf("Work Mode: On-site") }
+    var candidateName by remember { mutableStateOf("Gerald Zulumba") }
+    var candidateProgram by remember { mutableStateOf("B.Sc. Computer Engineering (Year 3)") }
+    var studentSkills by remember { mutableStateOf(listOf("React", "Node.js", "PostgreSQL", "Docker", "AWS")) }
+    var studentDocuments by remember {
+        mutableStateOf(
+            listOf(
+                "Resume.pdf" to "240 KB",
+                "Transcript" to "Official Seal",
+                "Portfolio" to "GitHub/Live"
+            )
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            val appsSnapshot = FirebaseFirestore.getInstance().collection("applications").get().await()
+            if (!appsSnapshot.isEmpty) {
+                val firstDoc = appsSnapshot.documents.first()
+                currentAppDocId = firstDoc.id
+                val firstApp = firstDoc.data
+                if (firstApp != null) {
+                    val status = firstApp["status"] as? String
+                    if (!status.isNullOrBlank()) {
+                        applicationStatus = status.uppercase()
+                    }
+                    val title = firstApp["internshipTitle"] as? String
+                    if (!title.isNullOrBlank()) internshipTitleState = title
+
+                    val studentUid = firstApp["studentUid"] as? String
+                    if (!studentUid.isNullOrBlank()) {
+                        val userDoc = FirebaseFirestore.getInstance().collection("users").document(studentUid).get().await()
+                        if (userDoc.exists()) {
+                            val name = userDoc.getString("fullName") ?: userDoc.getString("studentName")
+                            if (!name.isNullOrBlank()) candidateName = name
+                            val prog = userDoc.getString("programme")
+                            val year = userDoc.getString("yearOfStudy")
+                            if (!prog.isNullOrBlank()) {
+                                candidateProgram = if (!year.isNullOrBlank()) "$prog ($year)" else prog
+                            }
+                            val skillsStr = userDoc.getString("skills")
+                            if (!skillsStr.isNullOrBlank()) {
+                                studentSkills = skillsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            }
+                            val docs = userDoc.get("documents") as? List<*>
+                            if (!docs.isNullOrEmpty()) {
+                                studentDocuments = docs.mapNotNull { item ->
+                                    val map = item as? Map<*, *>
+                                    val docTitle = map?.get("title") as? String ?: "Document"
+                                    val subtitle = map?.get("subtitle") as? String ?: "Attached"
+                                    docTitle to subtitle
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            val jobs = InternshipRepository.getInternships()
+            val match = jobs.find { it.title.equals(internshipTitleState, ignoreCase = true) }
+            if (match != null) {
+                if (match.workMode.isNotBlank()) workModeState = "Work Mode: ${match.workMode}"
+            }
+        } catch (_: Exception) {}
+    }
 
     val darkNavy = Color(0xFF0F2C59)
     val textBlack = Color(0xFF000000)
@@ -98,43 +182,19 @@ fun EmployerApplicationReview(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Applicant Review",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = darkNavy,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Search Icon
                 Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable { },
+                    modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    SearchNavIcon(
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF334155)
+                    Text(
+                        text = "Applicant Review",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = darkNavy
                     )
                 }
 
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // Filter / Menu Icon
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clickable { },
-                    contentAlignment = Alignment.Center
-                ) {
-                    FilterIcon(
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF334155)
-                    )
-                }
+                Spacer(modifier = Modifier.size(36.dp))
             }
 
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
@@ -149,213 +209,65 @@ fun EmployerApplicationReview(
                 // Active Internship Header Card
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(18.dp),
                     color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    shadowElevation = 2.dp
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(22.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(Color(0xFFEFF6FF), RoundedCornerShape(10.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CodeIcon(modifier = Modifier.size(22.dp), tint = Color(0xFF1E3A8A))
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "ACTIVE INTERNSHIP",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF047857)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(Color(0xFF059669), CircleShape)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Full Stack Web Developer...",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textBlack,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = Color(0xFFE0E7FF)
-                        ) {
-                            Text(
-                                text = "18 Applicants",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF3730A3),
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Filter Tabs Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterTabPill(
-                        label = "All",
-                        count = "18",
-                        isSelected = selectedTab == 0,
-                        onClick = { selectedTab = 0 }
-                    )
-                    FilterTabPill(
-                        label = "Pending Review",
-                        count = "9",
-                        isSelected = selectedTab == 1,
-                        onClick = { selectedTab = 1 }
-                    )
-                    FilterTabPill(
-                        label = "Accepted",
-                        count = "4",
-                        isSelected = selectedTab == 2,
-                        onClick = { selectedTab = 2 }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Sub-header: Currently Reviewing & Sort
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Currently Reviewing (1 of 9)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textHelperGrey
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { }
-                    ) {
-                        SortSwapIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF1E3A8A))
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Rank: GPA High to Low",
-                            fontSize = 12.sp,
+                            text = internshipTitleState,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1E3A8A)
+                            color = textBlack,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = workModeState,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF525252)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // MAIN FOCUS CANDIDATE CARD (Gerald Zulumba)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     color = Color.White,
-                    border = BorderStroke(2.dp, Color(0xFF1E3A8A)),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     shadowElevation = 2.dp
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         // Candidate Header Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.Top
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Blank Avatar Box with Green Status Indicator
-                            Box(modifier = Modifier.size(56.dp)) {
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFF1F5F9),
-                                    border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        PersonIcon(
-                                            modifier = Modifier.size(32.dp),
-                                            tint = Color(0xFF64748B)
-                                        )
-                                    }
-                                }
-
-                                // Green Active Indicator
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .size(14.dp)
-                                        .background(Color(0xFF10B981), CircleShape)
-                                        .border(2.dp, Color.White, CircleShape)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Gerald Zulumba",
+                                    text = candidateName,
                                     fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = textBlack
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "B.Sc. Computer Engineering (Year 3)",
+                                    text = candidateProgram,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF334155),
                                     lineHeight = 16.sp
                                 )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // GPA Badge Box
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = "GPA",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF64748B)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Surface(
-                                    color = Color(0xFFEFF6FF),
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
-                                ) {
-                                    Text(
-                                        text = "3.91",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1D4ED8),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                    )
-                                }
                             }
                         }
 
@@ -377,7 +289,11 @@ fun EmployerApplicationReview(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Surface(
-                                    color = Color(0xFFFEF3C7),
+                                    color = when (applicationStatus) {
+                                        "ACCEPTED" -> Color(0xFFDCFCE7)
+                                        "REJECTED" -> Color(0xFFFEE2E2)
+                                        else -> Color(0xFFEFF6FF)
+                                    },
                                     shape = RoundedCornerShape(50)
                                 ) {
                                     Row(
@@ -387,22 +303,31 @@ fun EmployerApplicationReview(
                                         Box(
                                             modifier = Modifier
                                                 .size(6.dp)
-                                                .background(Color(0xFFD97706), CircleShape)
+                                                .background(
+                                                    when (applicationStatus) {
+                                                        "ACCEPTED" -> Color(0xFF10B981)
+                                                        "REJECTED" -> Color(0xFFEF4444)
+                                                        else -> Color(0xFF3B82F6)
+                                                    },
+                                                    CircleShape
+                                                )
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "PENDING REVIEW",
+                                            text = applicationStatus,
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFB45309)
+                                            color = when (applicationStatus) {
+                                                "ACCEPTED" -> Color(0xFF166534)
+                                                "REJECTED" -> Color(0xFF991B1B)
+                                                else -> Color(0xFF1E3A8A)
+                                            }
                                         )
                                     }
                                 }
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
-                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "Applied May 3, 2025",
                                     fontSize = 12.sp,
@@ -414,9 +339,9 @@ fun EmployerApplicationReview(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Verified Competencies Section
+                        // Student Skills Section
                         Text(
-                            text = "VERIFIED COMPETENCIES",
+                            text = "STUDENT SKILLS",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF475569),
@@ -430,7 +355,7 @@ fun EmployerApplicationReview(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            listOf("React", "Node.js", "PostgreSQL", "Docker", "AWS", "+2 more").forEach { skill ->
+                            studentSkills.forEach { skill ->
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
                                     color = Color(0xFFEEF2FF)
@@ -439,7 +364,7 @@ fun EmployerApplicationReview(
                                         text = skill,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF3730A3),
+                                        color = Color.Black,
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                     )
                                 }
@@ -448,54 +373,7 @@ fun EmployerApplicationReview(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Personal Statement Excerpt Quote Card
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF8FAFC),
-                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "“ ",
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF1E3A8A)
-                                        )
-                                        Text(
-                                            text = "Personal Statement Excerpt",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF1E3A8A)
-                                        )
-                                    }
 
-                                    Text(
-                                        text = "280 words",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF64748B)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Text(
-                                    text = "\"During my sophomore year capstone, I led the architecture of a microservices portal connecting over 2,400 students to lab allocations. I am eager to apply distributed systems paradigms to production codebases at your company.\"",
-                                    fontSize = 12.sp,
-                                    fontStyle = FontStyle.Italic,
-                                    color = Color(0xFF334155),
-                                    lineHeight = 17.sp
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Verification Documents Section
                         Text(
@@ -512,26 +390,25 @@ fun EmployerApplicationReview(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            DocCard(
-                                modifier = Modifier.weight(1f),
-                                title = "Resume.pdf",
-                                subtitle = "240 KB",
-                                icon = { PdfDocIcon(modifier = Modifier.size(20.dp)) }
-                            )
-
-                            DocCard(
-                                modifier = Modifier.weight(1f),
-                                title = "Transcript",
-                                subtitle = "Official Seal",
-                                icon = { TranscriptDocIcon(modifier = Modifier.size(20.dp)) }
-                            )
-
-                            DocCard(
-                                modifier = Modifier.weight(1f),
-                                title = "Portfolio",
-                                subtitle = "GitHub/Live",
-                                icon = { PortfolioDocIcon(modifier = Modifier.size(20.dp)) }
-                            )
+                            studentDocuments.forEach { (docTitle, docSubtitle) ->
+                                DocCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = docTitle,
+                                    subtitle = docSubtitle,
+                                    onClick = {
+                                        val url = when {
+                                            docTitle.contains("Portfolio", ignoreCase = true) || docTitle.contains("GitHub", ignoreCase = true) -> "https://github.com"
+                                            else -> "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+                                        }
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {
+                                            Toast.makeText(context, "Opening $docTitle...", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(18.dp))
@@ -542,12 +419,42 @@ fun EmployerApplicationReview(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Button(
-                                onClick = { },
+                                onClick = {
+                                    applicationStatus = "ACCEPTED"
+                                    Toast.makeText(context, "Application accepted successfully!", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        try {
+                                            if (currentAppDocId != null) {
+                                                val appDoc = FirebaseFirestore.getInstance().collection("applications")
+                                                    .document(currentAppDocId!!)
+                                                    .get()
+                                                    .await()
+                                                val studentUid = appDoc.getString("studentUid")
+                                                val title = appDoc.getString("internshipTitle") ?: internshipTitleState
+
+                                                FirebaseFirestore.getInstance().collection("applications")
+                                                    .document(currentAppDocId!!)
+                                                    .update("status", "Accepted")
+                                                    .await()
+
+                                                if (!studentUid.isNullOrBlank()) {
+                                                    NotificationRepository.sendNotification(
+                                                        recipientUserId = studentUid,
+                                                        title = "Application Accepted!",
+                                                        message = "Congratulations! Your application for $title has been accepted.",
+                                                        type = "application"
+                                                    )
+                                                }
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+                                    onAcceptSuccess()
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(44.dp),
                                 shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF047857))
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3A8A))
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     CheckIcon(modifier = Modifier.size(16.dp), tint = Color.White)
@@ -562,110 +469,58 @@ fun EmployerApplicationReview(
                             }
 
                             OutlinedButton(
-                                onClick = { },
+                                onClick = {
+                                    applicationStatus = "REJECTED"
+                                    Toast.makeText(context, "Application rejected", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        try {
+                                            if (currentAppDocId != null) {
+                                                val appDoc = FirebaseFirestore.getInstance().collection("applications")
+                                                    .document(currentAppDocId!!)
+                                                    .get()
+                                                    .await()
+                                                val studentUid = appDoc.getString("studentUid")
+                                                val title = appDoc.getString("internshipTitle") ?: internshipTitleState
+
+                                                FirebaseFirestore.getInstance().collection("applications")
+                                                    .document(currentAppDocId!!)
+                                                    .update("status", "Rejected")
+                                                    .await()
+
+                                                if (!studentUid.isNullOrBlank()) {
+                                                    NotificationRepository.sendNotification(
+                                                        recipientUserId = studentUid,
+                                                        title = "Application Update",
+                                                        message = "Your application for $title was not selected at this time.",
+                                                        type = "application"
+                                                    )
+                                                }
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+                                    onRejectSuccess()
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(44.dp),
                                 shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Color(0xFFEF4444))
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CloseIcon(modifier = Modifier.size(16.dp), tint = Color(0xFFDC2626))
+                                    CloseIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF0F172A))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = "Reject",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFDC2626)
+                                        color = Color(0xFF0F172A)
                                     )
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Direct Message Button
-                        OutlinedButton(
-                            onClick = { },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                ChatMessageIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF0F2C59))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Direct Message Gerald",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F2C59)
-                                )
-                            }
-                        }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // SECTION: Other Applicants in Queue
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Other Applicants in Queue",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = textBlack
-                    )
-                    Text(
-                        text = "8 remaining",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Queue Applicant 1: Francis Jere (Blank Profile Icon)
-                QueueApplicantCard(
-                    name = "Francis Jere",
-                    gpa = "GPA 3.84",
-                    program = "B.Sc. Software Engineering",
-                    date = "May 2",
-                    statusText = "Pending",
-                    statusBg = Color(0xFFFEF3C7),
-                    statusTextCol = Color(0xFFD97706)
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Queue Applicant 2: Emily Makanda (Blank Profile Icon)
-                QueueApplicantCard(
-                    name = "Emily Makanda",
-                    gpa = "GPA 3.95",
-                    program = "B.Sc. Data Science",
-                    date = "May 1",
-                    statusText = "Shortlisted",
-                    statusBg = Color(0xFFD1FAE5),
-                    statusTextCol = Color(0xFF059669)
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Queue Applicant 3: Alex Howa (Blank Profile Icon)
-                QueueApplicantCard(
-                    name = "Alex Howa",
-                    gpa = "GPA 3.72",
-                    program = "B.Sc. Computer Engineering",
-                    date = "Apr 29",
-                    statusText = "Pending",
-                    statusBg = Color(0xFFFEF3C7),
-                    statusTextCol = Color(0xFFD97706)
-                )
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -684,7 +539,7 @@ fun EmployerApplicationReview(
                 BottomNavItem(
                     label = "Dashboard",
                     isSelected = selectedBottomNav == 0,
-                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 0
                         onNavigateHome()
@@ -694,7 +549,7 @@ fun EmployerApplicationReview(
                 BottomNavItem(
                     label = "Post Job",
                     isSelected = selectedBottomNav == 1,
-                    icon = { PlusIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { PlusIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 1
                         onNavigatePostJob()
@@ -704,7 +559,7 @@ fun EmployerApplicationReview(
                 BottomNavItem(
                     label = "Applicants",
                     isSelected = selectedBottomNav == 2,
-                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 2
                         onNavigateApplications()
@@ -714,7 +569,7 @@ fun EmployerApplicationReview(
                 BottomNavItem(
                     label = "Profile",
                     isSelected = selectedBottomNav == 3,
-                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 3
                         onNavigateProfile()
@@ -770,10 +625,10 @@ private fun DocCard(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
-    icon: @Composable () -> Unit
+    onClick: () -> Unit
 ) {
     Surface(
-        modifier = modifier.clickable { },
+        modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(10.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
@@ -781,11 +636,9 @@ private fun DocCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            icon()
-            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = title,
                 fontSize = 12.sp,
@@ -794,6 +647,7 @@ private fun DocCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 fontSize = 10.sp,

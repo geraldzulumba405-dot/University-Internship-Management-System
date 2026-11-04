@@ -4,19 +4,15 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,27 +21,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -57,14 +46,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import kotlinx.coroutines.tasks.await
 
-// Additional Color Tokens for Applications Screen
+data class StudentApplicationModel(
+    val id: String = "",
+    val studentUid: String = "",
+    val internshipTitle: String = "",
+    val company: String = "",
+    val location: String = "",
+    val status: String = "Under Review",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 private val NavyDark = Color(0xFF0F1E4A)
-private val LightNavyContainer = Color(0xFFEFF4FF)
+private val LightNavyContainerVal = Color(0xFFEFF4FF)
 private val TealPrimary = Color(0xFF0F766E)
-private val RedAlert = Color(0xFFDC2626)
-private val RedAlertLight = Color(0xFFFEF2F2)
-private val RedAlertBorder = Color(0xFFFECACA)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,11 +72,44 @@ fun MyApplicationsScreen(
     onNavigateHome: () -> Unit = {},
     onNavigateSearch: () -> Unit = {},
     onNavigateProfile: () -> Unit = {},
-    onViewDetails: (String) -> Unit = {},
-    onPrepInterview: (String) -> Unit = {}
+    onViewDetails: (String) -> Unit = {}
 ) {
-    var selectedFilterIndex by remember { mutableIntStateOf(0) }
-    val filterTabs = listOf("All 4", "Under Review 2", "Interview 1", "Offered 1")
+    var myApplications by remember { mutableStateOf<List<StudentApplicationModel>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        try {
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid != null) {
+                val snapshot = FirebaseFirestore.getInstance().collection("applications")
+                    .whereEqualTo("studentUid", uid)
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get()
+                    .await()
+                myApplications = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(StudentApplicationModel::class.java)?.copy(id = doc.id)
+                }
+            }
+        } catch (_: Exception) {
+            try {
+                val uid = FirebaseAuth.getInstance().currentUser?.uid
+                if (uid != null) {
+                    val snapshot = FirebaseFirestore.getInstance().collection("applications")
+                        .whereEqualTo("studentUid", uid)
+                        .get()
+                        .await()
+                    myApplications = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(StudentApplicationModel::class.java)?.copy(id = doc.id)
+                    }
+                }
+            } catch (_: Exception) {
+                myApplications = emptyList()
+            }
+        } finally {
+            isLoading = false
+        }
+    }
 
     Box(
         modifier = modifier
@@ -93,44 +125,14 @@ fun MyApplicationsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {}) {
-                        MenuIcon(modifier = Modifier.size(22.dp), tint = NavyPrimary)
-                    }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    Column {
-                        Text(
-                            text = "My Applications",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NavyPrimary
-                        )
-                        Text(
-                            text = "Semester 2 • 2024/2025",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TealPrimary
-                        )
-                    }
-                }
-
-                Box(modifier = Modifier.padding(end = 4.dp)) {
-                    IconButton(onClick = {}) {
-                        BellIcon(modifier = Modifier.size(24.dp), tint = NavyPrimary)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(9.dp)
-                            .clip(CircleShape)
-                            .background(RedAlert)
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-8).dp, y = 8.dp)
-                    )
-                }
+                Text(
+                    text = "My Applications",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NavyDark
+                )
             }
 
             HorizontalDivider(color = OutlineVariant, thickness = 1.dp)
@@ -140,678 +142,98 @@ fun MyApplicationsScreen(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 20.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Metric Stat Cards Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Applied Metric
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        label = "Applied",
-                        count = "4",
-                        subtext = "roles",
-                        icon = { SendIcon(modifier = Modifier.size(14.dp), tint = NavyPrimary) },
-                        iconColor = NavyPrimary,
-                        borderColor = OutlineVariant,
-                        bgColor = CardBackground,
-                        onClick = { selectedFilterIndex = 0 }
-                    )
+                Spacer(modifier = Modifier.height(4.dp))
 
-                    // Active Metric
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        label = "Active",
-                        count = "3",
-                        subtext = "reviewing",
-                        icon = { CalendarIcon(modifier = Modifier.size(14.dp), tint = TealPrimary) },
-                        iconColor = TealPrimary,
-                        borderColor = OutlineVariant,
-                        bgColor = CardBackground,
-                        onClick = { selectedFilterIndex = 1 }
-                    )
-
-                    // Action Urgent Metric
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        label = "Action",
-                        count = "1",
-                        subtext = "urgent",
-                        icon = { WarningIcon(modifier = Modifier.size(14.dp), tint = RedAlert) },
-                        iconColor = RedAlert,
-                        borderColor = RedAlertBorder,
-                        bgColor = RedAlertLight,
-                        onClick = { selectedFilterIndex = 2 }
-                    )
-                }
-
-                // 2. Horizontal Filter Pills
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    filterTabs.forEachIndexed { index, title ->
-                        val isSelected = selectedFilterIndex == index
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedFilterIndex = index },
-                            label = {
-                                Text(
-                                    text = title,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else TextPrimary
-                                )
-                            },
-                            shape = RoundedCornerShape(20.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NavyDark,
-                                containerColor = CardBackground
-                            ),
-                            border = BorderStroke(1.dp, if (isSelected) NavyDark else OutlineVariant)
-                        )
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Loading your applications...", fontSize = 13.sp, color = TextSecondary)
                     }
-                }
-
-                // --- DYNAMICALLY FILTERED APPLICATION CARDS ---
-
-                // CARD 1: Interview Stage (Software Engineering Intern) -> Show when All (0) or Interview (2) selected
-                if (selectedFilterIndex == 0 || selectedFilterIndex == 2) {
-                    Card(
+                } else if (myApplications.isEmpty()) {
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        shape = RoundedCornerShape(16.dp),
+                        color = CardBackground,
                         border = BorderStroke(1.dp, OutlineVariant)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No applications submitted yet.",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Browse and apply for verified internships to track your status here.",
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                } else {
+                    myApplications.forEach { app ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            border = BorderStroke(1.dp, OutlineVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(LightNavyContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CodeIcon(modifier = Modifier.size(24.dp), tint = NavyPrimary)
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "Software Engineering Int...",
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Text(
-                                            text = "Google LLC • Mountain View, CA\n(Remote Hybrid)",
-                                            fontSize = 12.sp,
-                                            color = TextSecondary,
-                                            lineHeight = 16.sp
-                                        )
-                                    }
-                                }
-
-                                Surface(
-                                    color = NavyDark,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "• STAGE 3 OF 4",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Interview Scheduled Box
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                color = LightNavyContainer.copy(alpha = 0.5f),
-                                border = BorderStroke(1.dp, OutlineVariant)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CalendarIcon(modifier = Modifier.size(18.dp), tint = TealPrimary)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Interview Scheduled",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = NavyPrimary
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Date: June 14, 2025 at 2:00 PM CAT (Google Meet)",
-                                        fontSize = 12.sp,
-                                        color = TextPrimary
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Multi-step lifecycle status bar
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                StepIndicator(text = "Applied", isDone = true)
-                                StepIndicator(text = "Review", isDone = true)
-                                Surface(
-                                    color = LightNavyContainer,
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = "Interview",
-                                        color = NavyPrimary,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                                StepIndicator(text = "Decision", isDone = false)
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Segmented color bar
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                            ) {
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(TealPrimary))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(TealPrimary))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(NavyDark))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(LightNavyContainer))
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Placement Approval Badge
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, OutlineVariant)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.Top
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        ShieldIcon(modifier = Modifier.size(16.dp), tint = TealPrimary)
-                                        Spacer(modifier = Modifier.width(6.dp))
+                                    Row(modifier = Modifier.weight(1f)) {
+                                        Column {
+                                            Text(
+                                                text = app.internshipTitle,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextPrimary
+                                            )
+                                            Text(
+                                                text = "${app.company} • ${app.location}",
+                                                fontSize = 12.sp,
+                                                color = TextSecondary
+                                            )
+                                        }
+                                    }
+                                    Surface(
+                                        color = LightNavyContainerVal,
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
                                         Text(
-                                            text = "Prof. Banda approved placement",
+                                            text = app.status.ifBlank { "Under Review" },
+                                            color = NavyDark,
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = TealPrimary
-                                        )
-                                    }
-                                    Text(
-                                        text = "App ID: #UNI-8842",
-                                        fontSize = 11.sp,
-                                        color = TextSecondary
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Dual Actions: View Details & Prep Interview
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { onViewDetails("UNI-8842") },
-                                    modifier = Modifier
-                                        .weight(1.1f)
-                                        .height(46.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, OutlineVariant)
-                                ) {
-                                    VisibilityIcon(modifier = Modifier.size(16.dp), tint = NavyPrimary)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "View Details",
-                                        fontSize = 13.sp,
-                                        color = NavyPrimary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Button(
-                                    onClick = { onPrepInterview("UNI-8842") },
-                                    modifier = Modifier
-                                        .weight(1.1f)
-                                        .height(46.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = NavyDark)
-                                ) {
-                                    VideocamIcon(modifier = Modifier.size(18.dp), tint = Color.White)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Prep Interview",
-                                        fontSize = 13.sp,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // CARD 2: Under Review 1 (Data Science & AI Intern) -> Show when All (0) or Under Review (1) selected
-                if (selectedFilterIndex == 0 || selectedFilterIndex == 1) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        border = BorderStroke(1.dp, OutlineVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Row(modifier = Modifier.weight(1f)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(LightNavyContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        BarChartIcon(modifier = Modifier.size(24.dp), tint = TealPrimary)
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "Data Science & AI Intern",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Text(
-                                            text = "BD Tech Consulting • Zomba",
-                                            fontSize = 12.sp,
-                                            color = TextSecondary
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
                                     }
                                 }
-                                Surface(
-                                    color = LightNavyContainer,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "Under Review",
-                                        color = NavyPrimary,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
                                 Text(
-                                    text = "Candidate Screening (50%)",
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
-                                )
-                                Text(
-                                    text = "HR Assessment",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = NavyPrimary
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            LinearProgressIndicator(
-                                progress = { 0.5f },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = TealPrimary,
-                                trackColor = LightNavyContainer
-                            )
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            HorizontalDivider(color = OutlineVariant, thickness = 0.5.dp)
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "🕒 Sent: May 10, 2025",
+                                    text = "🕒 Submitted: ${android.text.format.DateFormat.format("MMM dd, yyyy", java.util.Date(app.createdAt))}",
                                     fontSize = 11.sp,
                                     color = TextSecondary
                                 )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { onViewDetails("DS-AI-01") }
-                                ) {
-                                    Text(
-                                        text = "Review Details",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyPrimary
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    RightArrowIcon(modifier = Modifier.size(13.dp), tint = NavyPrimary)
-                                }
                             }
                         }
                     }
                 }
 
-                // CARD 3: Under Review 2 (Frontend UI/UX Intern) -> Show when All (0) or Under Review (1) selected
-                if (selectedFilterIndex == 0 || selectedFilterIndex == 1) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        border = BorderStroke(1.dp, OutlineVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Row(modifier = Modifier.weight(1f)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(LightNavyContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CodeIcon(modifier = Modifier.size(24.dp), tint = TealPrimary)
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "Frontend UI/UX Design Intern",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Text(
-                                            text = "EcoNet Wireless • Lilongwe",
-                                            fontSize = 12.sp,
-                                            color = TextSecondary
-                                        )
-                                    }
-                                }
-                                Surface(
-                                    color = LightNavyContainer,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "Under Review",
-                                        color = NavyPrimary,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Portfolio Review (25%)",
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
-                                )
-                                Text(
-                                    text = "Application Received",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = NavyPrimary
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            LinearProgressIndicator(
-                                progress = { 0.25f },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = TealPrimary,
-                                trackColor = LightNavyContainer
-                            )
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            HorizontalDivider(color = OutlineVariant, thickness = 0.5.dp)
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "🕒 Sent: May 14, 2025",
-                                    fontSize = 11.sp,
-                                    color = TextSecondary
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { onViewDetails("UI-UX-02") }
-                                ) {
-                                    Text(
-                                        text = "Review Details",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyPrimary
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    RightArrowIcon(modifier = Modifier.size(13.dp), tint = NavyPrimary)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // CARD 4: Offered 1 (Cloud & DevOps Intern) -> Show when All (0) or Offered (3) selected
-                if (selectedFilterIndex == 0 || selectedFilterIndex == 3) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        border = BorderStroke(1.dp, OutlineVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Row(modifier = Modifier.weight(1f)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xFFD1FAE5)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        SendIcon(modifier = Modifier.size(24.dp), tint = Color(0xFF047857))
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "Cloud & DevOps Intern",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Text(
-                                            text = "MalSwitch Systems • Blantyre",
-                                            fontSize = 12.sp,
-                                            color = TextSecondary
-                                        )
-                                    }
-                                }
-                                Surface(
-                                    color = Color(0xFFD1FAE5),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "Offered",
-                                        color = Color(0xFF047857),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Offer Box
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFFECFDF5),
-                                border = BorderStroke(1.dp, Color(0xFFA7F3D0))
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        ShieldIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF047857))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Official Offer Received 🎉",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF047857)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Placement terms approved by HR. Please accept before June 1, 2025.",
-                                        fontSize = 12.sp,
-                                        color = TextPrimary
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Actions: Accept Offer & View Terms
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { onViewDetails("DEV-OPS-03") },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(44.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, OutlineVariant)
-                                ) {
-                                    Text(
-                                        text = "View Terms",
-                                        fontSize = 13.sp,
-                                        color = NavyPrimary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Button(
-                                    onClick = { onViewDetails("DEV-OPS-03") },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(44.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF047857))
-                                ) {
-                                    Text(
-                                        text = "Accept Offer",
-                                        fontSize = 13.sp,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 5. Academic Placement Help Footer
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Need help with academic credits or approval?",
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = "Contact Career Placement Office",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = NavyPrimary,
-                        modifier = Modifier.clickable { }
-                    )
-                }
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
             // Bottom Navigation Bar
@@ -833,16 +255,16 @@ fun MyApplicationsScreen(
                 )
 
                 BottomNavItem(
-                    label = "Search",
+                    label = "Internships",
                     isSelected = false,
-                    icon = { SearchNavIcon(modifier = Modifier.size(20.dp), tint = TextSecondary) },
+                    icon = { BriefcaseIcon(modifier = Modifier.size(20.dp), tint = TextSecondary) },
                     onClick = onNavigateSearch
                 )
 
                 BottomNavItem(
                     label = "Applications",
                     isSelected = true,
-                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = TealPrimary) },
+                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = Color(0xFF1E3A8A)) },
                     onClick = { }
                 )
 
@@ -890,7 +312,7 @@ private fun MetricCard(
                     text = count,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (iconColor == RedAlert) RedAlert else NavyPrimary
+                    color = if (iconColor == Color.Red) Color.Red else NavyDark
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -907,93 +329,76 @@ private fun MetricCard(
 @Composable
 private fun StepIndicator(text: String, isDone: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (isDone) {
-            CheckIcon(modifier = Modifier.size(14.dp), tint = TealPrimary)
-            Spacer(modifier = Modifier.width(3.dp))
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .background(if (isDone) TealPrimary else OutlineVariant, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isDone) {
+                Text(text = "✓", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
-        Text(
-            text = text,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (isDone) TealPrimary else TextSecondary
-        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text = text, fontSize = 11.sp, color = if (isDone) TealPrimary else TextSecondary, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-fun MenuIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = NavyPrimary
-) {
+fun MenuIcon(modifier: Modifier = Modifier, tint: Color = NavyDark) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val stroke = w * 0.10f
-
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.28f), end = Offset(w * 0.85f, h * 0.28f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.50f), end = Offset(w * 0.85f, h * 0.50f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.72f), end = Offset(w * 0.85f, h * 0.72f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.1f, h * 0.25f), end = Offset(w * 0.9f, h * 0.25f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.1f, h * 0.50f), end = Offset(w * 0.9f, h * 0.50f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.1f, h * 0.75f), end = Offset(w * 0.9f, h * 0.75f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
     }
 }
 
 @Composable
-fun SendIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = NavyPrimary
-) {
+fun SendIcon(modifier: Modifier = Modifier, tint: Color = NavyDark) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-
-        val plane = Path().apply {
-            moveTo(w * 0.15f, h * 0.50f)
-            lineTo(w * 0.85f, h * 0.18f)
-            lineTo(w * 0.52f, h * 0.85f)
-            lineTo(w * 0.40f, h * 0.58f)
+        val path = Path().apply {
+            moveTo(w * 0.1f, h * 0.15f)
+            lineTo(w * 0.9f, h * 0.5f)
+            lineTo(w * 0.1f, h * 0.85f)
+            lineTo(w * 0.25f, h * 0.5f)
             close()
         }
-        drawPath(plane, color = tint, style = Stroke(width = w * 0.10f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
 @Composable
-fun WarningIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = RedAlert
-) {
+fun WarningIcon(modifier: Modifier = Modifier, tint: Color = Color.Red) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-
         val tri = Path().apply {
-            moveTo(w * 0.50f, h * 0.15f)
+            moveTo(w * 0.5f, h * 0.15f)
             lineTo(w * 0.88f, h * 0.82f)
             lineTo(w * 0.12f, h * 0.82f)
             close()
         }
         drawPath(tri, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-
         drawLine(color = tint, start = Offset(w * 0.5f, h * 0.38f), end = Offset(w * 0.5f, h * 0.58f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
         drawCircle(color = tint, radius = w * 0.05f, center = Offset(w * 0.5f, h * 0.70f))
     }
 }
 
 @Composable
-fun CodeIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = NavyPrimary
-) {
+fun CodeIcon(modifier: Modifier = Modifier, tint: Color = NavyDark) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-
         val left = Path().apply {
             moveTo(w * 0.38f, h * 0.28f)
             lineTo(w * 0.18f, h * 0.50f)
             lineTo(w * 0.38f, h * 0.72f)
         }
         drawPath(left, color = tint, style = Stroke(width = w * 0.10f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-
         val right = Path().apply {
             moveTo(w * 0.62f, h * 0.28f)
             lineTo(w * 0.82f, h * 0.50f)
@@ -1004,14 +409,10 @@ fun CodeIcon(
 }
 
 @Composable
-fun VisibilityIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = NavyPrimary
-) {
+fun VisibilityIcon(modifier: Modifier = Modifier, tint: Color = NavyDark) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-
         val eye = Path().apply {
             moveTo(w * 0.12f, h * 0.5f)
             cubicTo(w * 0.32f, h * 0.22f, w * 0.68f, h * 0.22f, w * 0.88f, h * 0.5f)
@@ -1019,20 +420,15 @@ fun VisibilityIcon(
             close()
         }
         drawPath(eye, color = tint, style = Stroke(width = w * 0.08f))
-
         drawCircle(color = tint, radius = w * 0.14f, center = Offset(w * 0.5f, h * 0.5f))
     }
 }
 
 @Composable
-fun VideocamIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color.White
-) {
+fun VideocamIcon(modifier: Modifier = Modifier, tint: Color = Color.White) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-
         val body = Path().apply {
             moveTo(w * 0.15f, h * 0.28f)
             lineTo(w * 0.62f, h * 0.28f)
@@ -1041,31 +437,17 @@ fun VideocamIcon(
             close()
         }
         drawPath(body, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-
-        val lens = Path().apply {
-            moveTo(w * 0.62f, h * 0.42f)
-            lineTo(w * 0.85f, h * 0.28f)
-            lineTo(w * 0.85f, h * 0.72f)
-            lineTo(w * 0.62f, h * 0.58f)
-            close()
-        }
-        drawPath(lens, color = tint)
     }
 }
 
 @Composable
-fun BarChartIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = TealPrimary
-) {
+fun BarChartIcon(modifier: Modifier = Modifier, tint: Color = Color(0xFF0F766E)) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val stroke = w * 0.12f
-
-        drawLine(color = tint, start = Offset(w * 0.25f, h * 0.50f), end = Offset(w * 0.25f, h * 0.80f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.50f, h * 0.25f), end = Offset(w * 0.50f, h * 0.80f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.75f, h * 0.38f), end = Offset(w * 0.75f, h * 0.80f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawRect(color = tint, topLeft = Offset(w * 0.15f, h * 0.5f), size = androidx.compose.ui.geometry.Size(w * 0.2f, h * 0.35f))
+        drawRect(color = tint, topLeft = Offset(w * 0.40f, h * 0.2f), size = androidx.compose.ui.geometry.Size(w * 0.2f, h * 0.65f))
+        drawRect(color = tint, topLeft = Offset(w * 0.65f, h * 0.35f), size = androidx.compose.ui.geometry.Size(w * 0.2f, h * 0.50f))
     }
 }
 

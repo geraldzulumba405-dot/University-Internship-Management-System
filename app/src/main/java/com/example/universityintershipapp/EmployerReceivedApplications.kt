@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -20,14 +21,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,6 +49,7 @@ import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 @Composable
 fun EmployerReceivedApplications(
     modifier: Modifier = Modifier,
+    internshipTitle: String = "",
     onApplicantClick: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigatePostJob: () -> Unit = {},
@@ -73,37 +82,8 @@ fun EmployerReceivedApplications(
                     text = "Received Applications",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = textDarkNavy,
-                    modifier = Modifier.weight(1f)
+                    color = textDarkNavy
                 )
-
-                // Search Icon
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clickable { },
-                    contentAlignment = Alignment.Center
-                ) {
-                    SearchNavIcon(
-                        modifier = Modifier.size(22.dp),
-                        tint = textBlack
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                // Filter / Menu Icon
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clickable { },
-                    contentAlignment = Alignment.Center
-                ) {
-                    FilterIcon(
-                        modifier = Modifier.size(22.dp),
-                        tint = textBlack
-                    )
-                }
             }
 
             HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
@@ -115,57 +95,193 @@ fun EmployerReceivedApplications(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
+                // Applicant Cards List
+                var applicantsList by remember { mutableStateOf<List<ApplicantData>>(emptyList()) }
+                var isLoading by remember { mutableStateOf(true) }
+
+                LaunchedEffect(Unit) {
+                    isLoading = true
+                    try {
+                        val appsSnapshot = FirebaseFirestore.getInstance().collection("applications").get().await()
+                        val fetched = mutableListOf<ApplicantData>()
+                        for (doc in appsSnapshot.documents) {
+                            val data = doc.data ?: continue
+                            val title = data["internshipTitle"] as? String ?: "Software Engineering Intern"
+                            val statusRaw = data["status"] as? String ?: "Pending"
+                            val statusText = when {
+                                statusRaw.equals("Accepted", ignoreCase = true) || statusRaw.equals("Accept", ignoreCase = true) -> "Accepted"
+                                statusRaw.equals("Rejected", ignoreCase = true) || statusRaw.equals("Reject", ignoreCase = true) -> "Rejected"
+                                else -> "Pending"
+                            }
+                            val studentUid = data["studentUid"] as? String
+                            var name = "Applicant"
+                            var prog = "B.Sc. Computer Science"
+                            if (!studentUid.isNullOrBlank()) {
+                                val userDoc = FirebaseFirestore.getInstance().collection("users").document(studentUid).get().await()
+                                if (userDoc.exists()) {
+                                    val n = userDoc.getString("fullName") ?: userDoc.getString("studentName")
+                                    if (!n.isNullOrBlank()) name = n
+                                    val p = userDoc.getString("programme")
+                                    if (!p.isNullOrBlank()) prog = p
+                                }
+                            }
+                            fetched.add(
+                                ApplicantData(
+                                    name = name,
+                                    gpa = "GPA 3.84",
+                                    programAndDate = "$prog • Recently",
+                                    statusText = statusText,
+                                    statusBg = when (statusText) {
+                                        "Accepted" -> Color(0xFFDCFCE7)
+                                        "Rejected" -> Color(0xFFFEE2E2)
+                                        else -> Color(0xFFEFF6FF)
+                                    },
+                                    statusTextCol = when (statusText) {
+                                        "Accepted" -> Color(0xFF166534)
+                                        "Rejected" -> Color(0xFF991B1B)
+                                        else -> Color(0xFF1E3A8A)
+                                    },
+                                    appliedInternship = title
+                                )
+                            )
+                        }
+                        applicantsList = fetched
+                    } catch (_: Exception) {
+                        applicantsList = emptyList()
+                    } finally {
+                        isLoading = false
+                    }
+                }
+
+                val filteredByInternship = if (internshipTitle.isNotBlank()) {
+                    applicantsList.filter { it.appliedInternship.equals(internshipTitle, ignoreCase = true) }
+                } else {
+                    applicantsList
+                }
+
                 // Filter Tabs Row
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val allCount = filteredByInternship.size.toString()
+                    val pendingCount = filteredByInternship.count { it.statusText == "Pending" }.toString()
+                    val acceptedCount = filteredByInternship.count { it.statusText == "Accepted" }.toString()
+                    val rejectedCount = filteredByInternship.count { it.statusText == "Rejected" }.toString()
+
                     FilterTabPill(
                         label = "All",
-                        count = "18",
+                        count = allCount,
                         isSelected = selectedFilterTab == 0,
                         onClick = { selectedFilterTab = 0 }
                     )
                     FilterTabPill(
                         label = "Pending Review",
-                        count = "9",
+                        count = pendingCount,
                         isSelected = selectedFilterTab == 1,
                         onClick = { selectedFilterTab = 1 }
                     )
                     FilterTabPill(
                         label = "Accepted",
-                        count = "4",
+                        count = acceptedCount,
                         isSelected = selectedFilterTab == 2,
                         onClick = { selectedFilterTab = 2 }
+                    )
+                    FilterTabPill(
+                        label = "Rejected",
+                        count = rejectedCount,
+                        isSelected = selectedFilterTab == 3,
+                        onClick = { selectedFilterTab = 3 }
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Applicant Cards List
-                val applicantsList = listOf(
-                    ApplicantData("Francis Jere", "GPA 3.84", "B.Sc. Software Engineering • May 2", "Pending", Color(0xFFFEF3C7), Color(0xFFD97706)),
-                    ApplicantData("Emily Makanda", "GPA 3.95", "B.Sc. Data Science • May 1", "Accepted", Color(0xFFD1FAE5), Color(0xFF059669)),
-                    ApplicantData("Alex Howa", "GPA 3.72", "B.Sc. Computer Engineering • Apr 29", "Pending", Color(0xFFFEF3C7), Color(0xFFD97706)),
-                    ApplicantData("Chimwemwe Phiri", "GPA 3.65", "B.Sc. Information Systems • Apr 28", "Rejected", Color(0xFFFEE2E2), Color(0xFFDC2626)),
-                    ApplicantData("Talandira Banda", "GPA 3.88", "B.Sc. Computer Science • Apr 27", "Accepted", Color(0xFFD1FAE5), Color(0xFF059669)),
-                    ApplicantData("Sipho Ndhlovu", "GPA 3.78", "B.Sc. Electrical & Electronics • Apr 26", "Pending", Color(0xFFFEF3C7), Color(0xFFD97706)),
-                    ApplicantData("Natasha Mwale", "GPA 3.92", "B.Sc. Artificial Intelligence • Apr 25", "Accepted", Color(0xFFD1FAE5), Color(0xFF059669)),
-                    ApplicantData("Kelvin Tembo", "GPA 3.69", "B.Sc. Cyber Security • Apr 25", "Pending", Color(0xFFFEF3C7), Color(0xFFD97706))
-                )
-
-                val filteredList = when (selectedFilterTab) {
-                    1 -> applicantsList.filter { it.statusText == "Pending" }
-                    2 -> applicantsList.filter { it.statusText == "Accepted" }
-                    else -> applicantsList
+                if (internshipTitle.isNotBlank()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFEFF6FF),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                    ) {
+                        Text(
+                            text = "Applicants for: $internshipTitle",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E3A8A),
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
 
-                filteredList.forEach { applicant ->
-                    ReceivedApplicantCard(
-                        applicant = applicant,
-                        onClick = { onApplicantClick(applicant.name) }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                val filteredList = when (selectedFilterTab) {
+                    1 -> filteredByInternship.filter { it.statusText == "Pending" }
+                    2 -> filteredByInternship.filter { it.statusText == "Accepted" }
+                    3 -> filteredByInternship.filter { it.statusText == "Rejected" }
+                    else -> filteredByInternship
+                }
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Loading applications...", fontSize = 13.sp, color = Color(0xFF64748B))
+                    }
+                } else if (applicantsList.isEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No applications received",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Students' submitted applications will appear here.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+                } else if (filteredList.isEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No applications found for this filter.",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+                } else {
+                    filteredList.forEach { applicant ->
+                        ReceivedApplicantCard(
+                            applicant = applicant,
+                            onClick = { onApplicantClick(applicant.name) }
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -185,7 +301,7 @@ fun EmployerReceivedApplications(
                 BottomNavItem(
                     label = "Dashboard",
                     isSelected = selectedBottomNav == 0,
-                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 0
                         onNavigateHome()
@@ -195,7 +311,7 @@ fun EmployerReceivedApplications(
                 BottomNavItem(
                     label = "Post Job",
                     isSelected = selectedBottomNav == 1,
-                    icon = { PlusIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { PlusIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 1
                         onNavigatePostJob()
@@ -205,7 +321,7 @@ fun EmployerReceivedApplications(
                 BottomNavItem(
                     label = "Applicants",
                     isSelected = selectedBottomNav == 2,
-                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 2
                         onNavigateApplications()
@@ -215,7 +331,7 @@ fun EmployerReceivedApplications(
                 BottomNavItem(
                     label = "Profile",
                     isSelected = selectedBottomNav == 3,
-                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF0F766E) else Color(0xFF64748B)) },
+                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
                     onClick = {
                         selectedBottomNav = 3
                         onNavigateProfile()
@@ -232,7 +348,8 @@ private data class ApplicantData(
     val programAndDate: String,
     val statusText: String,
     val statusBg: Color,
-    val statusTextCol: Color
+    val statusTextCol: Color,
+    val appliedInternship: String = "Software Engineering Intern"
 )
 
 @Composable
@@ -280,10 +397,12 @@ private fun ReceivedApplicantCard(
     applicant: ApplicantData,
     onClick: () -> Unit
 ) {
+    val isClickable = !applicant.statusText.equals("Accepted", ignoreCase = true) && !applicant.statusText.equals("Rejected", ignoreCase = true)
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .then(if (isClickable) Modifier.clickable { onClick() } else Modifier),
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
@@ -292,42 +411,13 @@ private fun ReceivedApplicantCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Blank Profile Avatar Box (Replaced photo with neutral blank profile icon)
-            Surface(
-                modifier = Modifier.size(46.dp),
-                shape = RoundedCornerShape(10.dp),
-                color = Color(0xFFF1F5F9),
-                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    PersonIcon(
-                        modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF64748B)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = applicant.name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = applicant.gpa,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF475569)
-                    )
-                }
+                Text(
+                    text = applicant.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = applicant.programAndDate,
@@ -342,23 +432,33 @@ private fun ReceivedApplicantCard(
 
             Surface(
                 shape = RoundedCornerShape(50),
-                color = applicant.statusBg
+                color = when (applicant.statusText) {
+                    "Accepted" -> Color.Black
+                    "Rejected" -> Color.White
+                    else -> Color(0xFF1E3A8A) // Pending: Blue
+                },
+                border = if (applicant.statusText == "Rejected") BorderStroke(1.dp, Color(0xFFE2E8F0)) else null
             ) {
                 Text(
                     text = applicant.statusText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = applicant.statusTextCol,
+                    color = when (applicant.statusText) {
+                        "Rejected" -> Color.Black
+                        else -> Color.White
+                    },
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(6.dp))
+            if (!applicant.statusText.equals("Accepted", ignoreCase = true) && !applicant.statusText.equals("Rejected", ignoreCase = true)) {
+                Spacer(modifier = Modifier.width(6.dp))
 
-            RightChevronIcon(
-                modifier = Modifier.size(14.dp),
-                tint = Color(0xFF94A3B8)
-            )
+                RightChevronIcon(
+                    modifier = Modifier.size(14.dp),
+                    tint = Color(0xFF94A3B8)
+                )
+            }
         }
     }
 }

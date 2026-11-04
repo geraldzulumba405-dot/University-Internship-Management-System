@@ -220,74 +220,13 @@ fun ApplicationConfirmationScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Your university credential package has been securely dispatched to Google LLC.",
+                            text = "Your application has been submitted successfully.",
                             fontSize = 14.sp,
                             color = TextSecondary,
                             textAlign = TextAlign.Center,
                             lineHeight = 20.sp,
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(LightBlueContainer)
-                                .border(1.dp, OutlineVariant, RoundedCornerShape(12.dp))
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Reference ID:",
-                                fontSize = 13.sp,
-                                color = TextSecondary,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "#APP-2025-0842",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NavyPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                ContentCopyIcon(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clickable { },
-                                    tint = NavyPrimary
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SurfaceBackground)
-                                .border(1.dp, OutlineVariant, RoundedCornerShape(12.dp))
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            InfoNoticeIcon(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .padding(top = 2.dp),
-                                tint = SuccessDark
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Faculty supervisor approval has been automatically notified. Track your milestone reviews in My Applications.",
-                                fontSize = 12.sp,
-                                color = TextSecondary,
-                                lineHeight = 17.sp
-                            )
-                        }
 
                         Spacer(modifier = Modifier.height(24.dp))
 

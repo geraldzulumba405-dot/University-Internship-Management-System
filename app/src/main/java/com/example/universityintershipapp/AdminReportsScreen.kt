@@ -1,8 +1,9 @@
 package com.example.universityintershipapp
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,38 +21,55 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
 private val AdminAccentBlue = Color(0xFF1E3A8A)
 private val AdminRedAlert = Color(0xFFDC2626)
-private val AdminRedAlertBg = Color(0xFFFEE2E2)
+private val AdminSuspendBlue = Color(0xFF0284C7)
+
+data class UserAccountItem(
+    val id: String,
+    val name: String,
+    val identifier: String,
+    val email: String,
+    val details: String,
+    val type: String, // "Student" or "Employer"
+    val status: String, // "Active" or "Suspended"
+    val suspensionReason: String? = null,
+    val suspensionDate: String? = null
+)
 
 @Composable
 fun AdminReportsScreen(
@@ -63,7 +81,75 @@ fun AdminReportsScreen(
 ) {
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     var selectedBottomNav by remember { mutableIntStateOf(3) }
-    val filterTabs = listOf("Reported Content", "Reported Accounts", "Sanctions & Bans")
+    val filterTabs = listOf("User Accounts", "Suspended Accounts")
+
+    var searchQuery by remember { mutableStateOf("") }
+    var accountFilterTab by remember { mutableIntStateOf(0) } // 0: All, 1: Students, 2: Employers
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var accountsList by remember { mutableStateOf<List<UserAccountItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    fun loadAccounts() {
+        scope.launch {
+            isLoading = true
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val snap = db.collection("users").get().await()
+                val fetched = snap.documents.mapNotNull { doc ->
+                    val data = doc.data ?: return@mapNotNull null
+                    val role = data["role"] as? String ?: ""
+                    // Exclude admin accounts if desired, or include students & employers
+                    if (role.equals("admin", ignoreCase = true)) return@mapNotNull null
+
+                    val id = doc.id
+                    val name = data["fullName"] as? String ?: data["companyName"] as? String ?: data["contactName"] as? String ?: "User"
+                    val email = data["email"] as? String ?: ""
+                    val type = if (role.equals("employer", ignoreCase = true)) "Employer" else "Student"
+                    val identifier = if (type == "Student") (data["studentId"] as? String ?: "STUDENT-ID") else (data["phoneNumber"] as? String ?: "Contact")
+                    val details = if (type == "Student") (data["programme"] as? String ?: "Computer Science") else (data["sector"] as? String ?: data["industry"] as? String ?: "Business")
+                    val isVerified = data["isVerified"] as? Boolean ?: true
+                    val statusRaw = data["status"] as? String ?: if (isVerified) "Active" else "Suspended"
+                    val status = when {
+                        statusRaw.equals("Suspended", ignoreCase = true) -> "Suspended"
+                        statusRaw.equals("Active", ignoreCase = true) || isVerified -> "Active"
+                        else -> "Active"
+                    }
+                    val suspensionReason = data["suspensionReason"] as? String
+                    val suspensionDate = data["suspensionDate"] as? String
+
+                    UserAccountItem(
+                        id = id,
+                        name = name,
+                        identifier = identifier,
+                        email = email,
+                        details = details,
+                        type = type,
+                        status = status,
+                        suspensionReason = suspensionReason,
+                        suspensionDate = suspensionDate
+                    )
+                }
+                accountsList = fetched
+            } catch (_: Exception) {
+                accountsList = emptyList()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadAccounts()
+    }
+
+    // Dialog States
+    var showSuspendDialogForAccount by remember { mutableStateOf<UserAccountItem?>(null) }
+    var selectedSuspensionReason by remember { mutableStateOf("Fraudulent activities") }
+
+    var showReactivateDialogForAccount by remember { mutableStateOf<UserAccountItem?>(null) }
 
     Box(
         modifier = modifier
@@ -78,36 +164,22 @@ fun AdminReportsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(AdminDarkNavy, RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AdminShieldIcon(modifier = Modifier.size(20.dp), tint = Color.White)
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "UniIntern Admin",
+                        text = "Account Management",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = AdminDarkNavy
                     )
                     Text(
-                        text = "Compliance & Account Governance",
+                        text = "Manage platform accounts",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF475569)
                     )
-                }
-
-                IconButton(onClick = onLogOut) {
-                    LogoutIcon(modifier = Modifier.size(22.dp), tint = AdminDarkNavy)
                 }
             }
 
@@ -120,23 +192,6 @@ fun AdminReportsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-                // Title Banner
-                Column {
-                    Text(
-                        text = "Reports & User Management",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminDarkNavy,
-                        lineHeight = 26.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Review scam reports",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B),
-                        lineHeight = 16.sp
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -172,269 +227,139 @@ fun AdminReportsScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-
-
-                // Case File Card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
-                    shadowElevation = 2.dp
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                        Text(text = "Loading accounts from database...", fontSize = 13.sp, color = Color(0xFF64748B))
+                    }
+                } else {
+                    // TAB 1: USER ACCOUNTS (index 0)
+                    if (selectedFilterIndex == 0) {
+                        // Search Field
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy),
+                            placeholder = { Text("Search by name or email", color = Color(0xFF64748B), fontSize = 14.sp) },
+                            leadingIcon = { SearchNavIcon(modifier = Modifier.size(20.dp), tint = AdminDarkNavy) },
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "CASE #REP-2024-042",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF475569)
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AdminDarkNavy,
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White
                             )
-                        }
+                        )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Warning Badge
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = AdminRedAlertBg
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                WarningTriangleIcon(modifier = Modifier.size(16.dp), tint = AdminRedAlert)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Scam Suspicion / Advance Fee Request",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AdminRedAlert
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = Color(0xFFF1F5F9))
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Reported Listing section
-                        Text(
-                            text = "REPORTED LISTING",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF64748B),
-                            letterSpacing = 0.5.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Surface(
+                        // Account Filter Buttons (All, Students, Employers)
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF8FAFC),
-                            border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = "Remote Data Entry Assistant",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AdminDarkNavy
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                HorizontalDivider(color = Color(0xFFE2E8F0))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "FastTrack Global Ventures",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF334155)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Student Evidence & Deposition section
-                        Text(
-                            text = "STUDENT EVIDENCE & DEPOSITION",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF64748B),
-                            letterSpacing = 0.5.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFFFFBEB),
-                            border = BorderStroke(1.dp, Color(0xFFFEE2E2))
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = "\"Employer requested MWK 15,000 processing and interview fee via Airtel Money before issuing contract portal login credentials.\"",
-                                    fontSize = 13.sp,
-                                    color = AdminDarkNavy,
-                                    lineHeight = 18.sp
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-                                HorizontalDivider(color = Color(0xFFFEE2E2))
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                            val accTabs = listOf("All", "Students", "Employers")
+                            accTabs.forEachIndexed { tabIdx, tabTitle ->
+                                val isTabSelected = accountFilterTab == tabIdx
+                                Button(
+                                    onClick = { accountFilterTab = tabIdx },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(40.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isTabSelected) AdminAccentBlue else Color.White
+                                    ),
+                                    border = if (!isTabSelected) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "Transaction Ref: ",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF64748B)
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = Color.White,
-                                            border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
-                                        ) {
-                                            Text(
-                                                text = "AM-8829-019",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = AdminDarkNavy,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-
                                     Text(
-                                        text = "Oct 25, 2024",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF64748B)
+                                        text = tabTitle,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isTabSelected) Color.White else Color(0xFF334155)
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Action Buttons
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedButton(
-                                onClick = {},
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
-                            ) {
-                                DismissIcon(modifier = Modifier.size(16.dp), tint = AdminDarkNavy)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Dismiss Report", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
+                        val filteredAccounts = accountsList.filter { acc ->
+                            val matchesSearch = searchQuery.isBlank() ||
+                                    acc.name.contains(searchQuery.trim(), ignoreCase = true) ||
+                                    acc.email.contains(searchQuery.trim(), ignoreCase = true)
+                            val matchesType = when (accountFilterTab) {
+                                1 -> acc.type.equals("Student", ignoreCase = true)
+                                2 -> acc.type.equals("Employer", ignoreCase = true)
+                                else -> true
                             }
+                            matchesSearch && matchesType
+                        }
 
-                            OutlinedButton(
-                                onClick = {},
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, Color(0xFFFECACA)),
-                                colors = ButtonDefaults.outlinedButtonColors(containerColor = AdminRedAlertBg)
+                        if (filteredAccounts.isEmpty()) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.White,
+                                border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
                             ) {
-                                TrashIcon(modifier = Modifier.size(16.dp), tint = AdminRedAlert)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Remove Content", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminRedAlert)
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "No user accounts match your search or filter.",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
                             }
-
-                            Button(
-                                onClick = {},
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(46.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AdminRedAlert)
-                            ) {
-                                BanIcon(modifier = Modifier.size(18.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Suspend Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        } else {
+                            filteredAccounts.forEach { acc ->
+                                UserAccountCard(
+                                    account = acc,
+                                    onSuspend = { showSuspendDialogForAccount = acc },
+                                    onReactivate = { showReactivateDialogForAccount = acc }
+                                )
+                                Spacer(modifier = Modifier.height(14.dp))
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    // TAB 2: SUSPENDED ACCOUNTS (index 1)
+                    else if (selectedFilterIndex == 1) {
+                        val suspendedAccounts = accountsList.filter { it.status.equals("Suspended", ignoreCase = true) }
 
-                // Suspended Accounts & Sanctions Section
-                Text(
-                    text = "Suspended Accounts & Sanctions",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AdminDarkNavy
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
-                    shadowElevation = 2.dp
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "QuickHire Malawi",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AdminDarkNavy
-                            )
+                        if (suspendedAccounts.isEmpty()) {
                             Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color(0xFFDBEAFE)
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.White,
+                                border = BorderStroke(1.5.dp, Color(0xFFCBD5E1))
                             ) {
-                                Text(
-                                    text = "Employer",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AdminAccentBlue,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "No suspended accounts found.",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+                            }
+                        } else {
+                            suspendedAccounts.forEach { acc ->
+                                SuspendedAccountCard(
+                                    account = acc,
+                                    onReactivate = { showReactivateDialogForAccount = acc }
                                 )
+                                Spacer(modifier = Modifier.height(14.dp))
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Violation #892: Advance fee solicitation",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = AdminRedAlert
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-                        HorizontalDivider(color = Color(0xFFF1F5F9))
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Sanction Enacted: Oct 20, 2024",
-                            fontSize = 11.sp,
-                            color = Color(0xFF64748B)
-                        )
                     }
                 }
 
@@ -483,7 +408,7 @@ fun AdminReportsScreen(
                 )
 
                 AdminBottomNavItem(
-                    label = "Reports",
+                    label = "Accounts",
                     isSelected = selectedBottomNav == 3,
                     icon = { BarChartIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) AdminDarkNavy else Color(0xFF64748B)) },
                     onClick = { selectedBottomNav = 3 }
@@ -491,62 +416,325 @@ fun AdminReportsScreen(
             }
         }
     }
+
+    // SUSPEND ACCOUNT CONFIRMATION DIALOG
+    if (showSuspendDialogForAccount != null) {
+        val target = showSuspendDialogForAccount!!
+        val reasons = listOf(
+            "Fraudulent activities",
+            "Providing misleading information",
+            "Posting inappropriate content",
+            "Violation of platform policies",
+            "Other"
+        )
+
+        AlertDialog(
+            onDismissRequest = { showSuspendDialogForAccount = null },
+            title = {
+                Text(text = "Suspend Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminRedAlert)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(text = "Are you sure you want to suspend this account?", fontSize = 13.sp, color = Color(0xFF334155))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(text = "Name: ${target.name}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
+                            Text(text = "Type: ${target.type}", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(text = "Email: ${target.email}", fontSize = 12.sp, color = Color(0xFF64748B))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "Select reason for suspension:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
+
+                    reasons.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedSuspensionReason = reason }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.material3.RadioButton(
+                                selected = selectedSuspensionReason == reason,
+                                onClick = { selectedSuspensionReason = reason }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = reason, fontSize = 13.sp, color = Color(0xFF334155))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                FirebaseFirestore.getInstance().collection("users")
+                                    .document(target.id)
+                                    .update(
+                                        mapOf(
+                                            "status" to "Suspended",
+                                            "suspensionReason" to selectedSuspensionReason,
+                                            "suspensionDate" to "Today"
+                                        )
+                                    )
+                                    .await()
+
+                                Toast.makeText(context, "Account '${target.name}' suspended in database", Toast.LENGTH_SHORT).show()
+                                showSuspendDialogForAccount = null
+                                loadAccounts()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Failed to suspend: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AdminSuspendBlue)
+                ) {
+                    Text("Confirm Suspension")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showSuspendDialogForAccount = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // REACTIVATE ACCOUNT CONFIRMATION DIALOG
+    if (showReactivateDialogForAccount != null) {
+        val target = showReactivateDialogForAccount!!
+
+        AlertDialog(
+            onDismissRequest = { showReactivateDialogForAccount = null },
+            title = {
+                Text(text = "Reactivate Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Are you sure you want to reactivate this account?", fontSize = 13.sp, color = Color(0xFF334155))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(text = "Name: ${target.name}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminDarkNavy)
+                            Text(text = "Type: ${target.type}", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(text = "Email: ${target.email}", fontSize = 12.sp, color = Color(0xFF64748B))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                FirebaseFirestore.getInstance().collection("users")
+                                    .document(target.id)
+                                    .update(
+                                        mapOf(
+                                            "status" to "Active",
+                                            "suspensionReason" to null,
+                                            "suspensionDate" to null
+                                        )
+                                    )
+                                    .await()
+
+                                Toast.makeText(context, "Account '${target.name}' reactivated in database", Toast.LENGTH_SHORT).show()
+                                showReactivateDialogForAccount = null
+                                loadAccounts()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Failed to reactivate: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AdminAccentBlue)
+                ) {
+                    Text("Confirm Reactivation")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showReactivateDialogForAccount = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
-
-
 @Composable
-fun WarningTriangleIcon(modifier: Modifier = Modifier, tint: Color = AdminRedAlert) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val triangle = Path().apply {
-            moveTo(w * 0.5f, h * 0.1f)
-            lineTo(w * 0.92f, h * 0.88f)
-            lineTo(w * 0.08f, h * 0.88f)
-            close()
+private fun UserAccountCard(
+    account: UserAccountItem,
+    onSuspend: () -> Unit,
+    onReactivate: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = account.name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Email: ${account.email}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF475569)
+                    )
+                }
+
+
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (account.type == "Student") "ID: ${account.identifier} • Programme: ${account.details}" else "Contact: ${account.identifier} • Sector: ${account.details}",
+                fontSize = 12.sp,
+                color = Color(0xFF64748B)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider(color = Color(0xFFF1F5F9))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Status: ", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Text(
+                        text = account.status,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (account.status == "Active") AdminAccentBlue else AdminSuspendBlue
+                    )
+                }
+
+                if (account.status == "Active") {
+                    Button(
+                        onClick = onSuspend,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AdminSuspendBlue),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(text = "Suspend Account", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Button(
+                        onClick = onReactivate,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AdminAccentBlue),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(text = "Reactivate Account", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
-        drawPath(triangle, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.38f), end = Offset(w * 0.5f, h * 0.60f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
-        drawCircle(color = tint, radius = w * 0.05f, center = Offset(w * 0.5f, h * 0.74f))
     }
 }
 
 @Composable
-fun DismissIcon(modifier: Modifier = Modifier, tint: Color = AdminDarkNavy) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawLine(color = tint, start = Offset(w * 0.2f, h * 0.2f), end = Offset(w * 0.8f, h * 0.8f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.8f, h * 0.2f), end = Offset(w * 0.2f, h * 0.8f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
-    }
-}
+private fun SuspendedAccountCard(
+    account: UserAccountItem,
+    onReactivate: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = account.name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Email: ${account.email}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF475569)
+                    )
+                }
 
-@Composable
-fun TrashIcon(modifier: Modifier = Modifier, tint: Color = AdminRedAlert) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawLine(color = tint, start = Offset(w * 0.15f, h * 0.25f), end = Offset(w * 0.85f, h * 0.25f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
-        val bin = Path().apply {
-            moveTo(w * 0.3f, h * 0.25f)
-            lineTo(w * 0.35f, h * 0.88f)
-            lineTo(w * 0.65f, h * 0.88f)
-            lineTo(w * 0.7f, h * 0.25f)
+
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Reason: ${account.suspensionReason ?: "Violation of policies"}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF0F172A)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Suspended on: ${account.suspensionDate ?: "Recently"}",
+                fontSize = 11.sp,
+                color = Color(0xFF64748B)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider(color = Color(0xFFF1F5F9))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Status: ", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Text(
+                        text = "Suspended",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminSuspendBlue
+                    )
+                }
+
+                Button(
+                    onClick = onReactivate,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AdminAccentBlue),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text(text = "Reactivate Account", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
-        drawPath(bin, color = tint, style = Stroke(width = w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawLine(color = tint, start = Offset(w * 0.45f, h * 0.40f), end = Offset(w * 0.45f, h * 0.72f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.55f, h * 0.40f), end = Offset(w * 0.55f, h * 0.72f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-    }
-}
-
-@Composable
-fun BanIcon(modifier: Modifier = Modifier, tint: Color = Color.White) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawCircle(color = tint, radius = w * 0.4f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.1f))
-        drawLine(color = tint, start = Offset(w * 0.22f, h * 0.78f), end = Offset(w * 0.78f, h * 0.22f), strokeWidth = w * 0.1f, cap = StrokeCap.Round)
     }
 }
 
