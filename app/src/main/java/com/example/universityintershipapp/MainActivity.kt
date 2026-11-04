@@ -32,6 +32,7 @@ enum class AppScreen {
     EMPLOYER_APPLICATION_REVIEW,
     EMPLOYER_RECEIVED_APPLICATIONS,
     EMPLOYER_PROFILE,
+    EMPLOYER_NOTIFICATION_PREFERENCES,
     ADMIN_DASHBOARD,
     ADMIN_EMPLOYERS,
     ADMIN_INTERNSHIPS,
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
             UniversityIntershipAppTheme {
                 val scope = rememberCoroutineScope()
                 var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+                var notificationReturnScreen by remember { mutableStateOf(AppScreen.STUDENT_HOME) }
                 var loggedInStudentName by remember { mutableStateOf("Gerald Zulumba") }
                 var loggedInStudentEmail by remember { mutableStateOf("gzulumba@unima.ac.mw") }
                 var loggedInStudentId by remember { mutableStateOf("BSC-INF-18-23") }
@@ -68,12 +70,12 @@ class MainActivity : ComponentActivity() {
                         AppScreen.REGISTER -> currentScreen = AppScreen.LOGIN
                         AppScreen.STUDENT_SEARCH, AppScreen.STUDENT_APPLICATION, AppScreen.MY_APPLICATIONS, AppScreen.STUDENT_PROFILE -> currentScreen = AppScreen.STUDENT_HOME
                         AppScreen.EMPLOYER_HOME -> currentScreen = AppScreen.LOGIN
-                        AppScreen.POST_INTERNSHIP, AppScreen.EMPLOYER_RECEIVED_APPLICATIONS, AppScreen.EMPLOYER_APPLICATION_REVIEW, AppScreen.EMPLOYER_PROFILE -> currentScreen = AppScreen.EMPLOYER_HOME
+                        AppScreen.POST_INTERNSHIP, AppScreen.EMPLOYER_RECEIVED_APPLICATIONS, AppScreen.EMPLOYER_APPLICATION_REVIEW, AppScreen.EMPLOYER_PROFILE, AppScreen.EMPLOYER_NOTIFICATION_PREFERENCES -> currentScreen = AppScreen.EMPLOYER_HOME
                         AppScreen.ADMIN_DASHBOARD -> currentScreen = AppScreen.LOGIN
                         AppScreen.ADMIN_EMPLOYERS, AppScreen.ADMIN_INTERNSHIPS, AppScreen.ADMIN_REPORTS -> currentScreen = AppScreen.ADMIN_DASHBOARD
                         AppScreen.SUBMIT_APPLICATION -> currentScreen = AppScreen.STUDENT_APPLICATION
                         AppScreen.APPLICATION_CONFIRMATION -> currentScreen = AppScreen.MY_APPLICATIONS
-                        AppScreen.NOTIFICATIONS -> currentScreen = AppScreen.STUDENT_HOME
+                        AppScreen.NOTIFICATIONS -> currentScreen = notificationReturnScreen
                         else -> currentScreen = AppScreen.LOGIN
                     }
                 }
@@ -92,15 +94,18 @@ class MainActivity : ComponentActivity() {
                             onLoginSubmit = { email, _, role, fullName ->
                                 val cleanEmail = email.trim().lowercase()
                                 if (role == "admin" || cleanEmail.contains("admin")) {
+                                    notificationReturnScreen = AppScreen.ADMIN_DASHBOARD
                                     currentScreen = AppScreen.ADMIN_DASHBOARD
                                 } else if (role == "employer" || cleanEmail.contains("employer") || cleanEmail.contains("company")) {
                                     loggedInEmployerEmail = cleanEmail
                                     loggedInEmployerContactPerson = if (fullName.isNotBlank()) fullName else AuthRepository.formatNameFromEmail(cleanEmail)
                                     loggedInEmployerCompanyName = AuthRepository.formatCompanyNameFromEmail(cleanEmail)
+                                    notificationReturnScreen = AppScreen.EMPLOYER_HOME
                                     currentScreen = AppScreen.EMPLOYER_HOME
                                 } else {
                                     loggedInStudentEmail = cleanEmail
                                     loggedInStudentName = if (fullName.isNotBlank()) fullName else AuthRepository.formatNameFromEmail(cleanEmail)
+                                    notificationReturnScreen = AppScreen.STUDENT_HOME
                                     currentScreen = AppScreen.STUDENT_HOME
                                 }
                             },
@@ -140,7 +145,10 @@ class MainActivity : ComponentActivity() {
                             onViewAllRecommended = { currentScreen = AppScreen.STUDENT_SEARCH },
                             onApplicationsClick = { currentScreen = AppScreen.MY_APPLICATIONS },
                             onProfileClick = { currentScreen = AppScreen.STUDENT_PROFILE },
-                            onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS },
+                            onNotificationClick = {
+                                notificationReturnScreen = AppScreen.STUDENT_HOME
+                                currentScreen = AppScreen.NOTIFICATIONS
+                            },
                             onApplyClick = { title, company, location ->
                                 selectedTitle = title
                                 selectedCompany = company
@@ -250,7 +258,10 @@ class MainActivity : ComponentActivity() {
                             onViewAllListingsClick = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateApplicants = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateProfile = { currentScreen = AppScreen.EMPLOYER_PROFILE },
-                            onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS },
+                            onNotificationClick = {
+                                notificationReturnScreen = AppScreen.EMPLOYER_HOME
+                                currentScreen = AppScreen.NOTIFICATIONS
+                            },
                             onLogOutClick = { currentScreen = AppScreen.LOGIN }
                         )
                     }
@@ -291,7 +302,13 @@ class MainActivity : ComponentActivity() {
                             onNavigateInternships = { currentScreen = AppScreen.POST_INTERNSHIP },
                             onNavigateApplications = { currentScreen = AppScreen.EMPLOYER_RECEIVED_APPLICATIONS },
                             onNavigateProfile = { currentScreen = AppScreen.EMPLOYER_PROFILE },
+                            onNotificationPreferencesClick = { currentScreen = AppScreen.EMPLOYER_NOTIFICATION_PREFERENCES },
                             onLogOutClick = { currentScreen = AppScreen.LOGIN }
+                        )
+                    }
+                    AppScreen.EMPLOYER_NOTIFICATION_PREFERENCES -> {
+                        EmployerNotificationPreferencesScreen(
+                            onBackClick = { currentScreen = AppScreen.EMPLOYER_PROFILE }
                         )
                     }
                     AppScreen.ADMIN_DASHBOARD -> {
@@ -299,7 +316,10 @@ class MainActivity : ComponentActivity() {
                             onNavigateEmployers = { currentScreen = AppScreen.ADMIN_EMPLOYERS },
                             onNavigateInternships = { currentScreen = AppScreen.ADMIN_INTERNSHIPS },
                             onNavigateReports = { currentScreen = AppScreen.ADMIN_REPORTS },
-                            onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS },
+                            onNotificationClick = {
+                                notificationReturnScreen = AppScreen.ADMIN_DASHBOARD
+                                currentScreen = AppScreen.NOTIFICATIONS
+                            },
                             onLogOut = { currentScreen = AppScreen.LOGIN }
                         )
                     }
@@ -328,7 +348,7 @@ class MainActivity : ComponentActivity() {
                     AppScreen.NOTIFICATIONS -> {
                         NotificationScreen(
                             onBackClick = {
-                                currentScreen = AppScreen.STUDENT_HOME
+                                currentScreen = notificationReturnScreen
                             }
                         )
                     }

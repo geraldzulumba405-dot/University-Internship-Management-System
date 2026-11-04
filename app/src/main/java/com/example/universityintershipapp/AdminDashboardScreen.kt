@@ -189,21 +189,14 @@ fun AdminDashboardScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Button(
-                        onClick = { showLogoutDialog = true },
-                        modifier = Modifier.height(36.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B3B80)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0xFF1B3B80), RoundedCornerShape(10.dp))
+                            .clickable { showLogoutDialog = true },
+                        contentAlignment = Alignment.Center
                     ) {
                         LogoutIcon(modifier = Modifier.size(16.dp), tint = Color.White)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Logout",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
                     }
                 }
             }

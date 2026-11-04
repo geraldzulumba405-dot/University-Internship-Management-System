@@ -75,7 +75,7 @@ fun AdminInternshipManagementScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     var selectedBottomNav by remember { mutableIntStateOf(2) }
-    val filterTabs = listOf("Pending Review", "Published", "Rejected", "All")
+    val filterTabs = listOf("All", "Pending Review", "Published", "Rejected")
 
     var allInternships by remember { mutableStateOf<List<InternshipModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -103,9 +103,10 @@ fun AdminInternshipManagementScreen(
                 item.companyName.contains(searchQuery, ignoreCase = true) ||
                 item.location.contains(searchQuery, ignoreCase = true)
         val matchesTab = when (selectedFilterIndex) {
-            0 -> item.status == "pending" || item.status.isBlank()
-            1 -> item.status == "published"
-            2 -> item.status == "rejected"
+            0 -> true
+            1 -> item.status == "pending" || item.status.isBlank()
+            2 -> item.status == "published"
+            3 -> item.status == "rejected"
             else -> true
         }
         matchesSearch && matchesTab

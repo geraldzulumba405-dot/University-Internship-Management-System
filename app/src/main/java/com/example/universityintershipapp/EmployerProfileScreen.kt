@@ -66,6 +66,7 @@ fun EmployerProfileScreen(
     onNavigateInternships: () -> Unit = {},
     onNavigateApplications: () -> Unit = {},
     onNavigateProfile: () -> Unit = {},
+    onNotificationPreferencesClick: () -> Unit = {},
     onLogOutClick: () -> Unit = {}
 ) {
     var selectedBottomNav by remember { mutableIntStateOf(3) } // Profile selected
@@ -312,7 +313,8 @@ fun EmployerProfileScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         SettingsRow(
                             title = "Notification Preferences",
-                            subtitle = "Manage application alerts & candidate digests"
+                            subtitle = "Manage application alerts & candidate digests",
+                            onClick = onNotificationPreferencesClick
                         )
                     }
                 }
@@ -603,12 +605,13 @@ private fun ProfileInfoRow(
 @Composable
 private fun SettingsRow(
     title: String,
-    subtitle: String
+    subtitle: String,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onClick() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
