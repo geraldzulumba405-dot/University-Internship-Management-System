@@ -1,8 +1,6 @@
-# Task List - UniIntern Notification System
+# Task List - Responsive UI Improvements
 
-- [x] Create `NotificationRepository.kt` for Firestore notification operations `[x]`
-- [x] Create `NotificationScreen.kt` for viewing and managing notifications `[x]`
-- [x] Update `MainActivity.kt` with `AppScreen.NOTIFICATIONS` route `[x]`
-- [x] Wire notification bells in Student, Employer, and Admin dashboards `[x]`
-- [x] Add event triggers for application submissions, acceptances/rejections, and employer registrations `[x]`
-- [x] Verify build and test execution `[x]`
+- [ ] Audit and ensure scrollability, window insets, and `imePadding()` in `LoginScreen.kt` and `RegisterScreen.kt` `[ ]`
+- [ ] Audit and ensure scrollability, window insets, and `imePadding()` in `PostInternshipScreen.kt` `[ ]`
+- [ ] Audit and ensure scrollability and responsive sizing in `SubmitApplicationScreen.kt` and `StudentApplicationScreen.kt` `[ ]`
+- [ ] Verify build compilation and unit tests `[ ]`

@@ -79,6 +79,7 @@ fun PostInternshipScreen(
     var deadline by remember { mutableStateOf("") }
     var workMode by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var requirements by remember { mutableStateOf("") }
 
     val workModeOptions = listOf("On-site", "Remote", "Hybrid")
     var workModeDropdownExpanded by remember { mutableStateOf(false) }
@@ -139,6 +140,7 @@ fun PostInternshipScreen(
                         duration = duration,
                         deadline = deadline,
                         description = description,
+                        requirements = requirements,
                         skills = skillsList.toList(),
                         reqTranscript = reqTranscript,
                         reqResume = reqResume,
@@ -402,6 +404,23 @@ fun PostInternshipScreen(
                             color = textHelperGrey
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    FormLabel("Required Qualifications")
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    OutlinedTextField(
+                        value = requirements,
+                        onValueChange = { requirements = it },
+                        placeholder = { Text("• Enrolled in a degree program...\n• Minimum GPA 3.0...\n• Strong foundation in...", color = textPlaceholderGrey, fontSize = 13.sp) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        minLines = 3,
+                        colors = formTextFieldColors()
+                    )
                 }
 
                 // SECTION 3: Required Skills & Competencies

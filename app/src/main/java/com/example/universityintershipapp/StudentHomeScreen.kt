@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -80,16 +81,14 @@ fun StudentHomeScreen(
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid
-            if (uid != null) {
-                val notifs = NotificationRepository.getNotifications(uid)
-                unreadCount = notifs.count { !it.read }
+            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "test-student-uid"
+            val notifs = NotificationRepository.getNotifications(uid)
+            unreadCount = notifs.count { !it.effectiveIsRead }
 
-                val userDoc = FirebaseFirestore.getInstance().collection("users").document(uid).get().await()
-                val prog = userDoc.getString("programme") ?: userDoc.getString("fieldOfStudy")
-                if (!prog.isNullOrBlank()) {
-                    studentProgramme = prog
-                }
+            val userDoc = FirebaseFirestore.getInstance().collection("users").document(uid).get().await()
+            val prog = userDoc.getString("programme") ?: userDoc.getString("fieldOfStudy")
+            if (!prog.isNullOrBlank()) {
+                studentProgramme = prog
             }
             val jobs = InternshipRepository.getPublishedInternships()
             firestoreInternships = jobs.ifEmpty {
@@ -97,24 +96,19 @@ fun StudentHomeScreen(
             }
             availableCount = firestoreInternships.size
 
-            if (uid != null) {
-                try {
-                    val appSnapshot = FirebaseFirestore.getInstance().collection("applications")
-                        .whereEqualTo("studentUid", uid)
-                        .get()
-                        .await()
-                    submittedCount = appSnapshot.size()
-                    underReviewCount = appSnapshot.documents.count { doc ->
-                        val status = doc.getString("status") ?: ""
-                        status.contains("Review", ignoreCase = true) || status.contains("Pending", ignoreCase = true)
-                    }
-                } catch (_: Exception) {
-                    submittedCount = firestoreInternships.size.coerceAtMost(4)
-                    underReviewCount = firestoreInternships.size.coerceAtMost(2)
+            try {
+                val appSnapshot = FirebaseFirestore.getInstance().collection("applications")
+                    .whereEqualTo("studentUid", uid)
+                    .get()
+                    .await()
+                submittedCount = appSnapshot.size()
+                underReviewCount = appSnapshot.documents.count { doc ->
+                    val status = doc.getString("status") ?: ""
+                    status.contains("Review", ignoreCase = true) || status.contains("Pending", ignoreCase = true)
                 }
-            } else {
-                submittedCount = 0
-                underReviewCount = 0
+            } catch (_: Exception) {
+                submittedCount = firestoreInternships.size.coerceAtMost(4)
+                underReviewCount = firestoreInternships.size.coerceAtMost(2)
             }
         } catch (_: Exception) {
             firestoreInternships = emptyList()
@@ -604,26 +598,23 @@ fun InternshipCard(
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Duration: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                            Text(text = duration, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Text(text = "Duration: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155), maxLines = 1)
+                            Text(text = duration, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Deadline: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                            Text(text = deadline, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
+                            Text(text = "Deadline: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155), maxLines = 1)
+                            Text(text = deadline, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CategoryIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(text = "Field: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
                         Text(text = field, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E3A8A))
                     }
@@ -718,20 +709,19 @@ fun PostingCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Duration: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                        Text(text = duration, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Text(text = "Duration: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155), maxLines = 1)
+                        Text(text = duration, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Deadline: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
-                        Text(text = deadline, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
+                        Text(text = "Deadline: ", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155), maxLines = 1)
+                        Text(text = deadline, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }

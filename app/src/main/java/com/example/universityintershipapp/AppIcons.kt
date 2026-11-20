@@ -586,3 +586,61 @@ fun BellIcon(
         }
     }
 }
+
+@Composable
+fun LockIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = Color(0xFF64748B)
+) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        val shacklePath = Path().apply {
+            moveTo(w * 0.32f, h * 0.48f)
+            lineTo(w * 0.32f, h * 0.32f)
+            cubicTo(w * 0.32f, h * 0.15f, w * 0.68f, h * 0.15f, w * 0.68f, h * 0.32f)
+            lineTo(w * 0.68f, h * 0.48f)
+        }
+        drawPath(
+            path = shacklePath,
+            color = tint,
+            style = Stroke(width = w * 0.08f, cap = StrokeCap.Round)
+        )
+
+        val bodyRect = Path().apply {
+            moveTo(w * 0.22f, h * 0.48f)
+            lineTo(w * 0.78f, h * 0.48f)
+            lineTo(w * 0.78f, h * 0.85f)
+            lineTo(w * 0.22f, h * 0.85f)
+            close()
+        }
+        drawPath(
+            path = bodyRect,
+            color = tint,
+            style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+
+        drawCircle(
+            color = tint,
+            radius = w * 0.06f,
+            center = Offset(w * 0.5f, h * 0.64f)
+        )
+    }
+}
+
+@Composable
+fun BarChartIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = Color(0xFF0F2C59)
+) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = w * 0.12f
+
+        drawLine(color = tint, start = Offset(w * 0.2f, h * 0.8f), end = Offset(w * 0.2f, h * 0.4f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.8f), end = Offset(w * 0.5f, h * 0.2f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = tint, start = Offset(w * 0.8f, h * 0.8f), end = Offset(w * 0.8f, h * 0.5f), strokeWidth = stroke, cap = StrokeCap.Round)
+    }
+}

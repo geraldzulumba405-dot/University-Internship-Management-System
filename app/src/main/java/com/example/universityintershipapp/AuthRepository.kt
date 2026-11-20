@@ -222,6 +222,25 @@ object AuthRepository {
         }
     }
 
+    suspend fun sendPasswordResetEmail(emailInput: String): AuthResult {
+        val cleanEmail = emailInput.trim()
+        if (cleanEmail.isBlank()) {
+            return AuthResult.Error("Please enter your email address.")
+        }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+            return AuthResult.Error("Please enter a valid email address format.")
+        }
+
+        return try {
+            auth.sendPasswordResetEmail(cleanEmail).await()
+            AuthResult.Success(uid = "", role = "", email = cleanEmail, fullName = "If an account exists with this email address, a password reset link will be sent.")
+        } catch (e: FirebaseAuthInvalidUserException) {
+            AuthResult.Success(uid = "", role = "", email = cleanEmail, fullName = "If an account exists with this email address, a password reset link will be sent.")
+        } catch (e: Exception) {
+            AuthResult.Error(e.localizedMessage ?: "Failed to send password reset email. Please try again.")
+        }
+    }
+
     fun formatNameFromEmail(email: String): String {
         val clean = email.trim().lowercase()
         if (clean.contains("zulumba") || clean == "student@unima.ac.mw") return "Gerald Zulumba"

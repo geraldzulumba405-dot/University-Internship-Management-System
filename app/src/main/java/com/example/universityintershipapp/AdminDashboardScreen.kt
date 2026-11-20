@@ -127,7 +127,7 @@ fun AdminDashboardScreen(
                 val uid = FirebaseAuth.getInstance().currentUser?.uid
                 if (uid != null) {
                     val notifs = NotificationRepository.getNotifications(uid)
-                    unreadCount = notifs.count { !it.read }
+                    unreadCount = notifs.count { !it.effectiveIsRead }
                 }
 
                 val activitySnap = db.collection("activity_logs").orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(3).get().await()

@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,8 +83,8 @@ fun StudentInternshipScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedBottomNav by remember { mutableIntStateOf(1) }
 
-    // Mutually exclusive single-choice filter state ("Remote", "On-site", or null)
-    var selectedFilter by remember { mutableStateOf<String?>(null) }
+    // Mutually exclusive single-choice filter state ("All", "Remote", "On-site", "Hybrid")
+    var selectedFilter by remember { mutableStateOf<String?>("All") }
 
     var firestoreListings by remember { mutableStateOf<List<InternshipSearchItem>>(emptyList()) }
 
@@ -117,7 +118,7 @@ fun StudentInternshipScreen(
     val allListings = firestoreListings
 
     // Reactive Filtered Results
-    val filteredListings = remember(searchQuery, selectedFilter) {
+    val filteredListings = remember(searchQuery, selectedFilter, firestoreListings) {
         allListings.filter { item ->
             val matchesQuery = searchQuery.isBlank() ||
                     item.title.contains(searchQuery, ignoreCase = true) ||
@@ -125,6 +126,7 @@ fun StudentInternshipScreen(
                     item.location.contains(searchQuery, ignoreCase = true)
 
             val matchesFilter = when (selectedFilter) {
+                "All", null -> true
                 "Remote" -> item.workType.equals("Remote", ignoreCase = true)
                 "On-site" -> item.workType.equals("On-site", ignoreCase = true)
                 "Hybrid" -> item.workType.equals("Hybrid", ignoreCase = true)
@@ -240,9 +242,33 @@ fun StudentInternshipScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isAllSelected = selectedFilter == null || selectedFilter == "All"
                     val isRemoteSelected = selectedFilter == "Remote"
                     val isOnSiteSelected = selectedFilter == "On-site"
                     val isHybridSelected = selectedFilter == "Hybrid"
+
+                    // Chip 0: All
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (isAllSelected) Color(0xFFBFDBFE) else Color.White,
+                        border = BorderStroke(1.dp, if (isAllSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                        modifier = Modifier.clickable {
+                            selectedFilter = "All"
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "All",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isAllSelected) Color(0xFF1E3A8A) else Color(0xFF334155)
+                            )
+                        }
+                    }
 
                     // Chip 1: Remote
                     Surface(
@@ -495,20 +521,28 @@ fun SearchResultCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = "Deadline: ",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF334155)
+                        color = Color(0xFF334155),
+                        maxLines = 1
                     )
                     Text(
                         text = deadline,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = Color(0xFF0F172A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Button(
                     onClick = onApplyClick,
