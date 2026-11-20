@@ -66,6 +66,7 @@ fun StudentApplicationScreen(
     var durationState by remember { mutableStateOf("12 Weeks") }
     var deadlineState by remember { mutableStateOf("October 15, 2026") }
     var skillsState by remember { mutableStateOf(listOf("Kotlin", "Java", "Python", "Cloud Platforms")) }
+    var requirementsState by remember { mutableStateOf("• Currently enrolled in a Bachelor's or Master's degree program in Computer Science, Software Engineering, or related technical field.\n• Minimum cumulative GPA of 3.0 or equivalent.\n• Strong foundation in data structures, algorithms, and object-oriented programming.") }
     var isAvailable by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -83,6 +84,11 @@ fun StudentApplicationScreen(
                     if (match.duration.isNotBlank()) durationState = match.duration
                     if (match.deadline.isNotBlank()) deadlineState = match.deadline
                     if (match.skills.isNotEmpty()) skillsState = match.skills
+                    if (match.requirements.isNotBlank()) {
+                        requirementsState = match.requirements
+                    } else if (match.fieldOfStudy.isNotBlank()) {
+                        requirementsState = "• Currently enrolled in a degree program in ${match.fieldOfStudy}.\n• Minimum cumulative GPA of 3.0 or equivalent.\n• Proficiency in required technical stack and fundamentals."
+                    }
                     isAvailable = true
                 } else {
                     isAvailable = false
@@ -339,7 +345,7 @@ fun StudentApplicationScreen(
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text(
-                                    text = "• Currently enrolled in a Bachelor's or Master's degree program in Computer Science, Software Engineering, or related technical field.\n• Minimum cumulative GPA of 3.0 or equivalent.\n• Strong foundation in data structures, algorithms, and object-oriented programming.",
+                                    text = requirementsState,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF334155),

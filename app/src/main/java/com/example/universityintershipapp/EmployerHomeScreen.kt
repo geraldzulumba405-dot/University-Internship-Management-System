@@ -112,7 +112,7 @@ fun EmployerHomeScreen(
                 recentApplicants = apps.take(5)
 
                 val notifs = NotificationRepository.getNotifications(uid)
-                unreadCount = notifs.count { !it.read }
+                unreadCount = notifs.count { !it.effectiveIsRead }
             }
         } catch (_: Exception) {}
     }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -22,8 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
@@ -65,7 +64,6 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(value = false) }
-    var rememberUsername by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -105,6 +103,7 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .imePadding()
                 .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
             Text(
@@ -229,31 +228,12 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Remember username & Forgot password
+            // Forgot password row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.End
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { rememberUsername = !rememberUsername }
-                ) {
-                    Checkbox(
-                        checked = rememberUsername,
-                        onCheckedChange = { rememberUsername = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = Color(0xFF1B3B80),
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Remember username",
-                        fontSize = 13.sp,
-                        color = Color(0xFF171717)
-                    )
-                }
-
                 Text(
                     text = "Forgot Password?",
                     fontSize = 13.sp,
@@ -543,47 +523,7 @@ fun InfoIcon(
     }
 }
 
-@Composable
-fun LockIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = Color(0xFF64748B)
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
 
-        val shacklePath = Path().apply {
-            moveTo(w * 0.32f, h * 0.48f)
-            lineTo(w * 0.32f, h * 0.32f)
-            cubicTo(w * 0.32f, h * 0.15f, w * 0.68f, h * 0.15f, w * 0.68f, h * 0.32f)
-            lineTo(w * 0.68f, h * 0.48f)
-        }
-        drawPath(
-            path = shacklePath,
-            color = tint,
-            style = Stroke(width = w * 0.08f, cap = StrokeCap.Round)
-        )
-
-        val bodyRect = Path().apply {
-            moveTo(w * 0.22f, h * 0.48f)
-            lineTo(w * 0.78f, h * 0.48f)
-            lineTo(w * 0.78f, h * 0.85f)
-            lineTo(w * 0.22f, h * 0.85f)
-            close()
-        }
-        drawPath(
-            path = bodyRect,
-            color = tint,
-            style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
-
-        drawCircle(
-            color = tint,
-            radius = w * 0.06f,
-            center = Offset(w * 0.5f, h * 0.64f)
-        )
-    }
-}
 
 @Composable
 fun EyeIcon(

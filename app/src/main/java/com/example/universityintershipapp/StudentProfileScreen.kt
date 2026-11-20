@@ -80,6 +80,7 @@ fun StudentProfileScreen(
     onNavigateApplications: () -> Unit = {},
     onEditProfile: () -> Unit = {},
     onLogOut: () -> Unit = {},
+    onNotificationPreferencesClick: () -> Unit = {},
     onAddDocument: () -> Unit = {}
 ) {
     var studentNameState by remember { mutableStateOf(studentName) }
@@ -263,7 +264,8 @@ fun StudentProfileScreen(
                     Column {
                         SettingsRow(
                             title = "Notification Preferences",
-                            subtitle = "Push notifications & email alerts"
+                            subtitle = "Push notifications & email alerts",
+                            onClick = onNotificationPreferencesClick
                         )
                     }
                 }
@@ -387,11 +389,13 @@ private fun getFileName(context: android.content.Context, uri: Uri): String? {
 @Composable
 private fun SettingsRow(
     title: String,
-    subtitle: String
+    subtitle: String,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

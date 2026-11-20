@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,24 +56,24 @@ fun NotificationScreen(
     var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    fun loadNotifications() {
-        scope.launch {
-            isLoading = true
-            try {
-                val uid = FirebaseAuth.getInstance().currentUser?.uid
-                if (uid != null) {
-                    notifications = NotificationRepository.getNotifications(uid)
-                }
-            } catch (_: Exception) {
-                notifications = emptyList()
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
-        loadNotifications()
+        isLoading = true
+        try {
+            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "test-student-uid"
+            val fallbackUid = "test-student-uid"
+            FirebaseFirestore.getInstance().collection("notifications")
+                .whereIn("recipientUid", listOf(uid, fallbackUid).distinct())
+                .addSnapshotListener { snapshot, _ ->
+                    isLoading = false
+                    if (snapshot != null) {
+                        notifications = snapshot.documents.mapNotNull { doc ->
+                            doc.toObject(NotificationItem::class.java)?.copy(id = doc.id)
+                        }.distinctBy { it.id }.sortedByDescending { it.createdAt }
+                    }
+                }
+        } catch (_: Exception) {
+            isLoading = false
+        }
     }
 
     val navyPrimary = Color(0xFF0F2C59)
@@ -119,7 +120,7 @@ fun NotificationScreen(
                 }
 
                 // Mark All as Read button
-                if (notifications.any { !it.read }) {
+                if (notifications.any { !it.isRead }) {
                     Text(
                         text = "Mark all read",
                         fontSize = 12.sp,
@@ -130,7 +131,6 @@ fun NotificationScreen(
                                 val uid = FirebaseAuth.getInstance().currentUser?.uid
                                 if (uid != null) {
                                     NotificationRepository.markAllAsRead(uid)
-                                    loadNotifications()
                                 }
                             }
                         }
@@ -185,10 +185,9 @@ fun NotificationScreen(
                         NotificationCard(
                             item = item,
                             onClick = {
-                                if (!item.read) {
+                                if (!item.isRead) {
                                     scope.launch {
                                         NotificationRepository.markAsRead(item.id)
-                                        loadNotifications()
                                     }
                                 }
                             }
@@ -205,10 +204,10 @@ private fun NotificationCard(
     item: NotificationItem,
     onClick: () -> Unit
 ) {
-    val dateStr = remember(item.timestamp) {
+    val dateStr = remember(item.createdAt) {
         try {
             val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-            sdf.format(Date(item.timestamp))
+            sdf.format(Date(item.createdAt))
         } catch (_: Exception) {
             "Recently"
         }
@@ -224,9 +223,9 @@ private fun NotificationCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.read) Color.White else Color(0xFFEFF6FF)
+            containerColor = if (item.isRead) Color.White else Color(0xFFEFF6FF)
         ),
-        border = BorderStroke(1.dp, if (item.read) Color(0xFFE2E8F0) else Color(0xFFBFDBFE))
+        border = BorderStroke(1.dp, if (item.isRead) Color(0xFFE2E8F0) else Color(0xFFBFDBFE))
     ) {
         Row(
             modifier = Modifier
@@ -234,7 +233,7 @@ private fun NotificationCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            if (!item.read) {
+            if (!item.isRead) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
