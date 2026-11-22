@@ -62,7 +62,6 @@ import kotlinx.coroutines.launch
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
 private val AdminAccentBlue = Color(0xFF1E3A8A)
-private val GreenPublish = Color(0xFF047857)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -241,34 +240,21 @@ fun AdminInternshipManagementScreen(
                         shadowElevation = 1.dp
                     ) {
                         Column(modifier = Modifier.padding(18.dp)) {
-                            Row(verticalAlignment = Alignment.Top) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .background(Color(0xFFEFF6FF), RoundedCornerShape(14.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    BuildingIcon(modifier = Modifier.size(28.dp), tint = AdminAccentBlue)
-                                }
-
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = primaryItem.title,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AdminDarkNavy,
-                                        lineHeight = 22.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(3.dp))
-                                    Text(
-                                        text = primaryItem.companyName,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = AdminAccentBlue
-                                    )
-                                }
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = primaryItem.title,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AdminDarkNavy,
+                                    lineHeight = 22.sp
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = primaryItem.companyName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = AdminAccentBlue
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(14.dp))
@@ -279,39 +265,27 @@ fun AdminInternshipManagementScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        LocationPinIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = primaryItem.location.ifBlank { "Malawi" },
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF334155)
-                                        )
-                                    }
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        DurationClockIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF334155))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = primaryItem.duration.ifBlank { "Full-time" },
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF334155)
-                                        )
-                                    }
+                                    Text(
+                                        text = primaryItem.location.ifBlank { "Malawi" },
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF334155)
+                                    )
+                                    Text(
+                                        text = primaryItem.duration.ifBlank { "Full-time" },
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF334155)
+                                    )
                                 }
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CalendarIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF64748B))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Closes ${primaryItem.deadline.ifBlank { "Soon" }}",
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF64748B)
-                                        )
-                                    }
+                                    Text(
+                                        text = "Closes ${primaryItem.deadline.ifBlank { "Soon" }}",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF64748B)
+                                    )
                                     Text(
                                         text = primaryItem.fieldOfStudy.ifBlank { "General" },
                                         fontSize = 12.sp,
@@ -325,20 +299,16 @@ fun AdminInternshipManagementScreen(
                             HorizontalDivider(color = Color(0xFFF1F5F9))
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                HistoryClockIcon(modifier = Modifier.size(15.dp), tint = Color(0xFF64748B))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Status: ${primaryItem.status.replaceFirstChar { it.uppercase() }}",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = when(primaryItem.status) {
-                                        "published" -> GreenPublish
-                                        "rejected" -> Color(0xFFDC2626)
-                                        else -> Color(0xFFB45309)
-                                    }
-                                )
-                            }
+                            Text(
+                                text = "Status: ${(primaryItem.status.ifBlank { "pending" }).replaceFirstChar { it.uppercase() }}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when(primaryItem.status.ifBlank { "pending" }) {
+                                    "published" -> AdminDarkNavy
+                                    "rejected" -> Color(0xFFDC2626)
+                                    else -> Color(0xFFB45309)
+                                }
+                            )
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -403,56 +373,59 @@ fun AdminInternshipManagementScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(18.dp))
+                            val isPending = primaryItem.status.equals("pending", ignoreCase = true) || primaryItem.status.isBlank()
+                            if (isPending) {
+                                Spacer(modifier = Modifier.height(18.dp))
 
-                            // Action Buttons
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        scope.launch {
-                                            InternshipRepository.updateInternshipStatus(primaryItem.id, "published")
-                                            loadInternships()
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(46.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = GreenPublish)
+                                // Action Buttons
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Text(
-                                        text = "Approve & Publish",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        maxLines = 1
-                                    )
-                                }
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                InternshipRepository.updateInternshipStatus(primaryItem.id, "published")
+                                                loadInternships()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(46.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = AdminDarkNavy)
+                                    ) {
+                                        Text(
+                                            text = "Approve & Publish",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            maxLines = 1
+                                        )
+                                    }
 
-                                OutlinedButton(
-                                    onClick = {
-                                        scope.launch {
-                                            InternshipRepository.updateInternshipStatus(primaryItem.id, "rejected")
-                                            loadInternships()
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(46.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, AdminDarkNavy),
-                                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
-                                ) {
-                                    Text(
-                                        text = "Reject",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AdminDarkNavy,
-                                        maxLines = 1
-                                    )
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                InternshipRepository.updateInternshipStatus(primaryItem.id, "rejected")
+                                                loadInternships()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(46.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, AdminDarkNavy),
+                                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+                                    ) {
+                                        Text(
+                                            text = "Reject",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AdminDarkNavy,
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -605,17 +578,6 @@ private fun QueueItemCard(
                 RightArrowIcon(modifier = Modifier.size(16.dp), tint = Color(0xFF64748B))
             }
         }
-    }
-}
-
-@Composable
-fun DurationClockIcon(modifier: Modifier = Modifier, tint: Color = Color(0xFF334155)) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawCircle(color = tint, radius = w * 0.38f, center = Offset(w * 0.5f, h * 0.5f), style = Stroke(width = w * 0.08f))
-        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.5f), end = Offset(w * 0.5f, h * 0.3f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.5f, h * 0.5f), end = Offset(w * 0.65f, h * 0.5f), strokeWidth = w * 0.08f, cap = StrokeCap.Round)
     }
 }
 

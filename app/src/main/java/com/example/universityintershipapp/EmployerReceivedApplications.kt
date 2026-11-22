@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import androidx.compose.ui.Alignment
@@ -102,10 +103,33 @@ fun EmployerReceivedApplications(
                 LaunchedEffect(Unit) {
                     isLoading = true
                     try {
-                        val appsSnapshot = FirebaseFirestore.getInstance().collection("applications").get().await()
+                        val employerUid = FirebaseAuth.getInstance().currentUser?.uid
+                        if (employerUid.isNullOrBlank()) {
+                            applicantsList = emptyList()
+                            isLoading = false
+                            return@LaunchedEffect
+                        }
+
+                        val employerListings = InternshipRepository.getEmployerInternships(employerUid)
+                        val ownedInternshipIds = employerListings.map { it.id }.filter { it.isNotBlank() }.toSet()
+
+                        val appsSnapshot = FirebaseFirestore.getInstance().collection("applications")
+                            .get()
+                            .await()
                         val fetched = mutableListOf<ApplicantData>()
                         for (doc in appsSnapshot.documents) {
                             val data = doc.data ?: continue
+                            val appEmployerUid = data["employerUid"] as? String ?: ""
+                            val internshipId = data["internshipId"] as? String ?: ""
+
+                            val matchesEmployer = appEmployerUid == employerUid ||
+                                                  (employerUid == "test-employer-uid" && (appEmployerUid == "employer-uid" || appEmployerUid.isBlank())) ||
+                                                  (appEmployerUid.isBlank() && employerUid == "employer-uid")
+
+                            val matchesOwnedInternship = internshipId.isNotBlank() && internshipId in ownedInternshipIds
+
+                            if (!matchesEmployer && !matchesOwnedInternship) continue
+
                             val title = data["internshipTitle"] as? String ?: "Software Engineering Intern"
                             val statusRaw = data["status"] as? String ?: "Pending"
                             val statusText = when {
@@ -114,22 +138,23 @@ fun EmployerReceivedApplications(
                                 else -> "Pending"
                             }
                             val studentUid = data["studentUid"] as? String
-                            var name = "Applicant"
-                            var prog = "B.Sc. Computer Science"
+                            var name = "Not provided"
+                            var prog = "Not provided"
                             if (!studentUid.isNullOrBlank()) {
                                 val userDoc = FirebaseFirestore.getInstance().collection("users").document(studentUid).get().await()
                                 if (userDoc.exists()) {
                                     val n = userDoc.getString("fullName") ?: userDoc.getString("studentName")
                                     if (!n.isNullOrBlank()) name = n
-                                    val p = userDoc.getString("programme")
+                                    val p = userDoc.getString("programme") ?: userDoc.getString("fieldOfStudy")
                                     if (!p.isNullOrBlank()) prog = p
                                 }
                             }
                             fetched.add(
                                 ApplicantData(
+                                    id = doc.id,
                                     name = name,
-                                    gpa = "GPA 3.84",
-                                    programAndDate = "$prog • Recently",
+                                    gpa = "Not provided",
+                                    programAndDate = prog,
                                     statusText = statusText,
                                     statusBg = when (statusText) {
                                         "Accepted" -> Color(0xFFDCFCE7)
@@ -278,7 +303,7 @@ fun EmployerReceivedApplications(
                     filteredList.forEach { applicant ->
                         ReceivedApplicantCard(
                             applicant = applicant,
-                            onClick = { onApplicantClick(applicant.name) }
+                            onClick = { onApplicantClick(applicant.id) }
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -343,6 +368,7 @@ fun EmployerReceivedApplications(
 }
 
 private data class ApplicantData(
+    val id: String,
     val name: String,
     val gpa: String,
     val programAndDate: String,
@@ -397,12 +423,18 @@ private fun ReceivedApplicantCard(
     applicant: ApplicantData,
     onClick: () -> Unit
 ) {
-    val isClickable = !applicant.statusText.equals("Accepted", ignoreCase = true) && !applicant.statusText.equals("Rejected", ignoreCase = true)
+    val isPending = applicant.statusText.equals("Pending", ignoreCase = true)
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (isClickable) Modifier.clickable { onClick() } else Modifier),
+            .then(
+                if (isPending) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
@@ -451,7 +483,7 @@ private fun ReceivedApplicantCard(
                 )
             }
 
-            if (!applicant.statusText.equals("Accepted", ignoreCase = true) && !applicant.statusText.equals("Rejected", ignoreCase = true)) {
+            if (isPending) {
                 Spacer(modifier = Modifier.width(6.dp))
 
                 RightChevronIcon(

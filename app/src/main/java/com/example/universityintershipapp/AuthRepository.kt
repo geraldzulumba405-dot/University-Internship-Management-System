@@ -128,7 +128,7 @@ object AuthRepository {
                 val adminSnap = db.collection("users").whereEqualTo("role", "admin").get().await()
                 for (adminDoc in adminSnap.documents) {
                     NotificationRepository.sendNotification(
-                        recipientUserId = adminDoc.id,
+                        recipientUid = adminDoc.id,
                         title = "New Employer Registration",
                         message = "${companyName.trim()} has registered and requires account review.",
                         type = "registration"

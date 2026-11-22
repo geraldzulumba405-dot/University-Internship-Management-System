@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -60,7 +62,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
-private val AdminRedAlert = Color(0xFFDC2626)
 
 @Composable
 fun AdminDashboardScreen(
@@ -78,6 +79,8 @@ fun AdminDashboardScreen(
     var pendingEmployers by remember { mutableStateOf("...") }
     var pendingPostings by remember { mutableStateOf("...") }
     var openReports by remember { mutableStateOf("...") }
+    var pendingEmployerList by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var pendingInternshipList by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     var unreadCount by remember { mutableIntStateOf(0) }
     var recentActivities by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -96,21 +99,31 @@ fun AdminDashboardScreen(
             totalEmployers = employerDocs.size.toString()
 
             // 3. Pending Employers
-            val pendingEmpCount = employerDocs.count { doc ->
+            val pendingEmpDocs = employerDocs.filter { doc ->
                 val verified = doc.getBoolean("isVerified") ?: false
                 val status = doc.getString("status") ?: ""
                 !verified || status.equals("Pending", ignoreCase = true)
             }
-            pendingEmployers = pendingEmpCount.toString()
+            pendingEmployers = pendingEmpDocs.size.toString()
+            pendingEmployerList = pendingEmpDocs.mapNotNull { doc ->
+                val data = doc.data?.toMutableMap() ?: mutableMapOf()
+                data["id"] = doc.id
+                data
+            }
 
             // 4. Pending Postings
             val internshipsSnap = db.collection("internships").get().await()
             val internshipDocs = internshipsSnap.documents
-            val pendingPostCount = internshipDocs.count { doc ->
+            val pendingPostDocs = internshipDocs.filter { doc ->
                 val status = doc.getString("status") ?: ""
                 status.equals("Pending", ignoreCase = true) || status.equals("pending", ignoreCase = true)
             }
-            pendingPostings = pendingPostCount.toString()
+            pendingPostings = pendingPostDocs.size.toString()
+            pendingInternshipList = pendingPostDocs.mapNotNull { doc ->
+                val data = doc.data?.toMutableMap() ?: mutableMapOf()
+                data["id"] = doc.id
+                data
+            }
 
             // 5. Open Reports
             var reportsCount = 0
@@ -264,18 +277,7 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Row 3: Open Reports (Full Width)
-                AdminMetricCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    title = "Open Reports",
-                    value = openReports,
-                    accentLineColor = AdminRedAlert,
-                    onClick = onNavigateReports
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Pending Actions Section (Simplified to 3 concise cards)
+                // Pending Actions Section
                 Text(
                     text = "Pending Actions",
                     fontSize = 17.sp,
@@ -285,30 +287,56 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                PendingActionCard(
-                    title = "Employer Approvals ($pendingEmployers)",
-                    subtitle = "Employer accounts awaiting review.",
-                    statusText = "Awaiting review",
-                    onClick = onNavigateEmployers
-                )
+                if (pendingEmployerList.isEmpty() && pendingInternshipList.isEmpty()) {
+                    Text(
+                        text = "No pending actions required.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B)
+                    )
+                } else {
+                    if (pendingEmployerList.isNotEmpty()) {
+                        Text(
+                            text = "Pending Employers (${pendingEmployerList.size})",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF334155)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        pendingEmployerList.forEach { emp ->
+                            val compName = (emp["companyName"] as? String) ?: (emp["fullName"] as? String) ?: "Employer"
+                            val sector = (emp["sector"] as? String) ?: (emp["industry"] as? String) ?: (emp["location"] as? String) ?: "Awaiting review"
+                            PendingActionCard(
+                                title = compName,
+                                subtitle = sector,
+                                statusText = "Awaiting employer review",
+                                onClick = onNavigateEmployers
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PendingActionCard(
-                    title = "Internship Postings ($pendingPostings)",
-                    subtitle = "Internship listings awaiting review.",
-                    statusText = "Awaiting review",
-                    onClick = onNavigateInternships
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PendingActionCard(
-                    title = "Open Reports ($openReports)",
-                    subtitle = "Reports requiring administrative attention.",
-                    statusText = "Unresolved reports",
-                    onClick = onNavigateReports
-                )
+                    if (pendingInternshipList.isNotEmpty()) {
+                        Text(
+                            text = "Pending Internships (${pendingInternshipList.size})",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF334155)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        pendingInternshipList.forEach { job ->
+                            val jobTitle = (job["title"] as? String) ?: "Internship"
+                            val company = (job["companyName"] as? String) ?: "Company"
+                            PendingActionCard(
+                                title = jobTitle,
+                                subtitle = company,
+                                statusText = "Awaiting internship review",
+                                onClick = onNavigateInternships
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -448,31 +476,41 @@ private fun AdminMetricCard(
     onClick: () -> Unit = {}
 ) {
     Surface(
-        modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .height(92.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
         color = Color.White,
-        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
-        shadowElevation = 2.dp
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        shadowElevation = 0.dp
     ) {
-        Box {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.CenterStart
+        ) {
             if (accentLineColor != null) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .width(4.dp)
-                        .fillMaxWidth()
+                        .fillMaxHeight()
                         .background(accentLineColor)
                 )
             }
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
                     text = title,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF475569)
+                    color = Color(0xFF334155),
+                    maxLines = 2,
+                    minLines = 2
                 )
-
-                Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = value,
@@ -495,34 +533,38 @@ private fun PendingActionCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .height(92.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = Color.White,
-        border = BorderStroke(1.5.dp, Color(0xFFCBD5E1)),
-        shadowElevation = 2.dp
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        shadowElevation = 0.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = title,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = Color(0xFF0F172A),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF475569)
+                    color = Color(0xFF64748B),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
-
-            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -531,9 +573,9 @@ private fun PendingActionCard(
             ) {
                 Text(
                     text = statusText,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF64748B)
+                    color = Color(0xFF1E3A8A)
                 )
             }
         }

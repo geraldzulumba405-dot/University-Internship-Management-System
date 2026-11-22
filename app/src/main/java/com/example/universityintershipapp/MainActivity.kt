@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -62,6 +63,14 @@ class MainActivity : ComponentActivity() {
 
                 val scope = rememberCoroutineScope()
 
+                val db = remember {
+                    FirebaseFirestore.getInstance()
+                }
+
+                val auth = remember {
+                    FirebaseAuth.getInstance()
+                }
+
                 // Notification permission launcher
                 val notificationPermissionLauncher =
                     rememberLauncherForActivityResult(
@@ -89,60 +98,122 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(AppScreen.STUDENT_HOME)
                 }
 
+                // Student information
                 var loggedInStudentName by remember {
-                    mutableStateOf("Gerald Zulumba")
+                    mutableStateOf("")
                 }
 
                 var loggedInStudentEmail by remember {
-                    mutableStateOf("gzulumba@unima.ac.mw")
+                    mutableStateOf("")
                 }
 
                 var loggedInStudentId by remember {
-                    mutableStateOf("BSC-INF-18-23")
+                    mutableStateOf("")
                 }
 
                 var loggedInProgramme by remember {
-                    mutableStateOf(
-                        "BSc Computer Science & Software Engineering"
-                    )
+                    mutableStateOf("")
                 }
 
                 var loggedInYearOfStudy by remember {
-                    mutableStateOf("Year 4")
+                    mutableStateOf("")
                 }
 
+                // Employer information
+                // These values are loaded from the authenticated employer's
+                // Firestore users/{uid} document after login.
                 var loggedInEmployerCompanyName by remember {
-                    mutableStateOf("Telecom Networks Malawi")
+                    mutableStateOf("")
                 }
 
                 var loggedInEmployerContactPerson by remember {
-                    mutableStateOf("Blessings Phiri")
+                    mutableStateOf("")
                 }
 
                 var loggedInEmployerEmail by remember {
-                    mutableStateOf("careers@tnm.mw")
+                    mutableStateOf("")
                 }
 
                 var loggedInEmployerIndustry by remember {
-                    mutableStateOf(
-                        "Telecommunications & Digital Services"
-                    )
+                    mutableStateOf("")
                 }
 
                 var loggedInEmployerLocation by remember {
-                    mutableStateOf("Blantyre, Malawi")
+                    mutableStateOf("")
+                }
+
+                // Selected internship information
+                var selectedInternshipId by remember {
+                    mutableStateOf("")
                 }
 
                 var selectedTitle by remember {
-                    mutableStateOf("Software Engineering Intern")
+                    mutableStateOf("")
                 }
 
                 var selectedCompany by remember {
-                    mutableStateOf("Google")
+                    mutableStateOf("")
                 }
 
                 var selectedLocation by remember {
-                    mutableStateOf("New York, USA")
+                    mutableStateOf("")
+                }
+
+                // Selected application for review
+                var selectedApplicationId by remember {
+                    mutableStateOf("")
+                }
+
+                // Load the authenticated employer's actual registration details.
+                suspend fun loadEmployerProfile(uid: String) {
+                    try {
+                        val userDocument = db.collection("users")
+                            .document(uid)
+                            .get()
+                            .await()
+
+                        if (userDocument.exists()) {
+
+                            loggedInEmployerCompanyName =
+                                userDocument.getString("companyName")
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: ""
+
+                            loggedInEmployerContactPerson =
+                                userDocument.getString("fullName")
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: userDocument.getString("contactName")
+                                        ?.takeIf { it.isNotBlank() }
+                                            ?: ""
+
+                            loggedInEmployerEmail =
+                                userDocument.getString("email")
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: auth.currentUser?.email
+                                            ?: ""
+
+                            loggedInEmployerIndustry =
+                                userDocument.getString("sector")
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: userDocument.getString("industry")
+                                        ?.takeIf { it.isNotBlank() }
+                                            ?: ""
+
+                            loggedInEmployerLocation =
+                                userDocument.getString("location")
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: userDocument.getString("companyLocation")
+                                        ?.takeIf { it.isNotBlank() }
+                                            ?: ""
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e(
+                            "EmployerProfile",
+                            "Failed to load employer profile",
+                            e
+                        )
+                    }
                 }
 
                 BackHandler(
@@ -198,6 +269,9 @@ class MainActivity : ComponentActivity() {
 
                 when (currentScreen) {
 
+                    // -------------------------------------------------
+                    // SPLASH
+                    // -------------------------------------------------
                     AppScreen.SPLASH -> {
                         SplashScreen(
                             onSplashFinished = {
@@ -206,13 +280,19 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // LOGIN
+                    // -------------------------------------------------
                     AppScreen.LOGIN -> {
                         LoginScreen(
                             onBackClick = {},
 
                             onLoginSubmit = { email, _, role, fullName ->
 
-                                // Register the FCM token after successful login
+                                val cleanEmail = email.trim().lowercase()
+                                val cleanRole = role.trim().lowercase()
+
+                                // Register FCM token after successful login.
                                 FcmTokenManager.registerTokenForCurrentUser {
                                         success, error ->
 
@@ -229,12 +309,11 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                // Request notification permission on Android 13+
+                                // Request notification permission on Android 13+.
                                 if (
                                     Build.VERSION.SDK_INT >=
                                     Build.VERSION_CODES.TIRAMISU
                                 ) {
-
                                     val permissionStatus =
                                         ContextCompat.checkSelfPermission(
                                             this@MainActivity,
@@ -251,62 +330,71 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                // Continue with existing role-based navigation
-                                val cleanEmail = email.trim().lowercase()
+                                // Use the actual role returned by LoginScreen.
+                                when (cleanRole) {
 
-                                if (
-                                    role == "admin" ||
-                                    cleanEmail.contains("admin")
-                                ) {
-                                    notificationReturnScreen =
-                                        AppScreen.ADMIN_DASHBOARD
+                                    "admin" -> {
+                                        notificationReturnScreen =
+                                            AppScreen.ADMIN_DASHBOARD
 
-                                    currentScreen = AppScreen.ADMIN_DASHBOARD
+                                        currentScreen =
+                                            AppScreen.ADMIN_DASHBOARD
+                                    }
 
-                                } else if (
-                                    role == "employer" ||
-                                    cleanEmail.contains("employer") ||
-                                    cleanEmail.contains("company")
-                                ) {
+                                    "employer" -> {
+                                        val employerUid =
+                                            auth.currentUser?.uid
 
-                                    loggedInEmployerEmail = cleanEmail
+                                        if (employerUid == null) {
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "Unable to identify your employer account.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
 
-                                    loggedInEmployerContactPerson =
-                                        if (fullName.isNotBlank()) {
-                                            fullName
-                                        } else {
-                                            AuthRepository.formatNameFromEmail(
-                                                cleanEmail
-                                            )
+                                            return@LoginScreen
                                         }
 
-                                    loggedInEmployerCompanyName =
-                                        AuthRepository.formatCompanyNameFromEmail(
-                                            cleanEmail
-                                        )
+                                        loggedInEmployerEmail = cleanEmail
 
-                                    notificationReturnScreen =
-                                        AppScreen.EMPLOYER_HOME
+                                        loggedInEmployerContactPerson =
+                                            fullName.trim()
 
-                                    currentScreen = AppScreen.EMPLOYER_HOME
+                                        scope.launch {
+                                            loadEmployerProfile(employerUid)
 
-                                } else {
+                                            notificationReturnScreen =
+                                                AppScreen.EMPLOYER_HOME
 
-                                    loggedInStudentEmail = cleanEmail
-
-                                    loggedInStudentName =
-                                        if (fullName.isNotBlank()) {
-                                            fullName
-                                        } else {
-                                            AuthRepository.formatNameFromEmail(
-                                                cleanEmail
-                                            )
+                                            currentScreen =
+                                                AppScreen.EMPLOYER_HOME
                                         }
+                                    }
 
-                                    notificationReturnScreen =
-                                        AppScreen.STUDENT_HOME
+                                    "student" -> {
+                                        loggedInStudentEmail = cleanEmail
 
-                                    currentScreen = AppScreen.STUDENT_HOME
+                                        loggedInStudentName =
+                                            fullName.ifBlank {
+                                                AuthRepository.formatNameFromEmail(
+                                                    cleanEmail
+                                                )
+                                            }
+
+                                        notificationReturnScreen =
+                                            AppScreen.STUDENT_HOME
+
+                                        currentScreen =
+                                            AppScreen.STUDENT_HOME
+                                    }
+
+                                    else -> {
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            "Your account role could not be identified. Please contact support.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                 }
                             },
 
@@ -320,6 +408,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // REGISTER
+                    // -------------------------------------------------
                     AppScreen.REGISTER -> {
                         RegisterScreen(
                             onBackClick = {
@@ -335,39 +426,20 @@ class MainActivity : ComponentActivity() {
 
                                 if (role == "employer") {
 
-                                    if (name.isNotBlank()) {
-                                        loggedInEmployerContactPerson = name
-                                    }
-
-                                    if (email.isNotBlank()) {
-                                        loggedInEmployerEmail = email
-                                    }
+                                    loggedInEmployerContactPerson = name
+                                    loggedInEmployerEmail = email
 
                                 } else {
 
-                                    if (name.isNotBlank()) {
-                                        loggedInStudentName = name
-                                    }
-
-                                    if (email.isNotBlank()) {
-                                        loggedInStudentEmail = email
-                                    }
-
-                                    if (studentId.isNotBlank()) {
-                                        loggedInStudentId = studentId
-                                    }
-
-                                    if (programme.isNotBlank()) {
-                                        loggedInProgramme = programme
-                                    }
-
-                                    if (year.isNotBlank()) {
-                                        loggedInYearOfStudy = year
-                                    }
+                                    loggedInStudentName = name
+                                    loggedInStudentEmail = email
+                                    loggedInStudentId = studentId
+                                    loggedInProgramme = programme
+                                    loggedInYearOfStudy = year
                                 }
                             },
 
-                            onCreateAccountSuccessWithRole = { role ->
+                            onCreateAccountSuccessWithRole = { _ ->
                                 currentScreen = AppScreen.LOGIN
                             },
 
@@ -377,6 +449,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // STUDENT HOME
+                    // -------------------------------------------------
                     AppScreen.STUDENT_HOME -> {
                         StudentHomeScreen(
                             studentName = loggedInStudentName,
@@ -404,16 +479,23 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = AppScreen.NOTIFICATIONS
                             },
 
-                            onApplyClick = { title, company, location ->
+                            onApplyClick = {
+                                    internshipId, title, company, location ->
+
+                                selectedInternshipId = internshipId
                                 selectedTitle = title
                                 selectedCompany = company
                                 selectedLocation = location
 
-                                currentScreen = AppScreen.STUDENT_APPLICATION
+                                currentScreen =
+                                    AppScreen.STUDENT_APPLICATION
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // STUDENT SEARCH
+                    // -------------------------------------------------
                     AppScreen.STUDENT_SEARCH -> {
                         StudentInternshipScreen(
                             onBackClick = {
@@ -432,16 +514,23 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = AppScreen.STUDENT_PROFILE
                             },
 
-                            onApplyClick = { title, company, location ->
+                            onApplyClick = {
+                                    internshipId, title, company, location ->
+
+                                selectedInternshipId = internshipId
                                 selectedTitle = title
                                 selectedCompany = company
                                 selectedLocation = location
 
-                                currentScreen = AppScreen.STUDENT_APPLICATION
+                                currentScreen =
+                                    AppScreen.STUDENT_APPLICATION
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // STUDENT APPLICATION DETAILS
+                    // -------------------------------------------------
                     AppScreen.STUDENT_APPLICATION -> {
                         StudentApplicationScreen(
                             title = selectedTitle,
@@ -458,10 +547,19 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // SUBMIT APPLICATION
+                    // -------------------------------------------------
                     AppScreen.SUBMIT_APPLICATION -> {
                         SubmitApplicationScreen(
+                            internshipId = selectedInternshipId,
+                            title = selectedTitle,
+                            company = selectedCompany,
+                            location = selectedLocation,
+
                             onCloseClick = {
-                                currentScreen = AppScreen.STUDENT_APPLICATION
+                                currentScreen =
+                                    AppScreen.STUDENT_APPLICATION
                             },
 
                             onSaveDraftClick = {
@@ -469,82 +567,152 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onSubmitApplicationClick = {
+                                scope.launch {
+                                    try {
+                                        val currentUser =
+                                            auth.currentUser
 
-                                val uid =
-                                    FirebaseAuth.getInstance()
-                                        .currentUser?.uid
-                                        ?: "test-student-uid"
+                                        if (currentUser == null) {
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "Please log in to submit an application.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
 
-                                val email =
-                                    FirebaseAuth.getInstance()
-                                        .currentUser?.email
-                                        ?: loggedInStudentEmail
+                                            return@launch
+                                        }
 
-                                if (uid.isNotBlank()) {
+                                        // Never search by title or invent IDs.
+                                        if (selectedInternshipId.isBlank()) {
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "The selected internship could not be identified. Please select it again.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
 
-                                    val appData = hashMapOf(
-                                        "studentUid" to uid,
-                                        "studentEmail" to email,
-                                        "internshipTitle" to selectedTitle,
-                                        "company" to selectedCompany,
-                                        "location" to selectedLocation,
-                                        "status" to "Under Review",
-                                        "createdAt" to System.currentTimeMillis()
-                                    )
+                                            return@launch
+                                        }
 
-                                    FirebaseFirestore.getInstance()
-                                        .collection("applications")
-                                        .add(appData)
+                                        val studentUid = currentUser.uid
 
-                                    scope.launch {
-                                        try {
+                                        val studentEmail =
+                                            currentUser.email
+                                                ?: loggedInStudentEmail
 
-                                            // Notify the student
-                                            NotificationRepository.sendNotification(
-                                                recipientUid = uid,
-                                                title = "Application Submitted Successfully",
-                                                message = "Your application for $selectedTitle at $selectedCompany has been submitted successfully.",
-                                                type = "application_submitted"
+                                        // Retrieve the exact selected internship.
+                                        val internshipSnapshot =
+                                            db.collection("internships")
+                                                .document(selectedInternshipId)
+                                                .get()
+                                                .await()
+
+                                        if (!internshipSnapshot.exists()) {
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "This internship no longer exists.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+
+                                            return@launch
+                                        }
+
+                                        // The employer UID must come from
+                                        // the actual internship document.
+                                        val employerUid =
+                                            internshipSnapshot.getString(
+                                                "postedByUid"
                                             )
 
-                                            val employersSnap =
-                                                FirebaseFirestore.getInstance()
-                                                    .collection("users")
-                                                    .whereEqualTo("role", "employer")
-                                                    .get()
-                                                    .await()
+                                        if (employerUid.isNullOrBlank()) {
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "This internship has no valid employer account. Please contact support.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
 
-                                            val employerDoc =
-                                                employersSnap.documents.find {
-                                                    (it.getString("companyName") ?: "")
-                                                        .equals(
-                                                            selectedCompany,
-                                                            ignoreCase = true
-                                                        )
-                                                } ?: employersSnap.documents.firstOrNull()
-
-                                            if (employerDoc != null) {
-
-                                                val employerUid = employerDoc.id
-
-                                                NotificationRepository.sendNotification(
-                                                    recipientUid = employerUid,
-                                                    title = "New Internship Application",
-                                                    message = "A student ($loggedInStudentName) has submitted an application for your $selectedTitle opportunity.",
-                                                    type = "new_application"
-                                                )
-                                            }
-
-                                        } catch (_: Exception) {
+                                            return@launch
                                         }
+
+                                        val actualTitle =
+                                            internshipSnapshot.getString("title")
+                                                ?: selectedTitle
+
+                                        val actualCompany =
+                                            internshipSnapshot.getString("companyName")
+                                                ?: selectedCompany
+
+                                        val actualLocation =
+                                            internshipSnapshot.getString("location")
+                                                ?: selectedLocation
+
+                                        // Save application with actual IDs.
+                                        val appData = hashMapOf(
+                                            "studentUid" to studentUid,
+                                            "studentEmail" to studentEmail,
+                                            "internshipId" to internshipSnapshot.id,
+                                            "employerUid" to employerUid,
+                                            "internshipTitle" to actualTitle,
+                                            "company" to actualCompany,
+                                            "location" to actualLocation,
+                                            "status" to "Under Review",
+                                            "createdAt" to System.currentTimeMillis()
+                                        )
+
+                                        val applicationRef =
+                                            db.collection("applications")
+                                                .add(appData)
+                                                .await()
+
+                                        // Notify the student.
+                                        NotificationRepository.sendNotification(
+                                            recipientUid = studentUid,
+                                            title = "Application Sent & Under Review",
+                                            message = "Your application for $actualTitle at $actualCompany has been sent and is currently under review.",
+                                            type = "application_submitted",
+                                            relatedInternshipId = internshipSnapshot.id,
+                                            relatedApplicationId = applicationRef.id
+                                        )
+
+                                        // Notify only the actual employer.
+                                        NotificationRepository.sendNotification(
+                                            recipientUid = employerUid,
+                                            title = "New Internship Application",
+                                            message = "A student ($loggedInStudentName) has submitted an application for your $actualTitle opportunity.",
+                                            type = "new_application",
+                                            relatedInternshipId = internshipSnapshot.id,
+                                            relatedApplicationId = applicationRef.id
+                                        )
+
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            "Application submitted successfully!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        currentScreen =
+                                            AppScreen.MY_APPLICATIONS
+
+                                    } catch (e: Exception) {
+                                        Log.e(
+                                            "Application",
+                                            "Failed to submit application",
+                                            e
+                                        )
+
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            "Failed to submit application: ${e.localizedMessage}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 }
-
-                                currentScreen = AppScreen.MY_APPLICATIONS
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // APPLICATION CONFIRMATION
+                    // -------------------------------------------------
                     AppScreen.APPLICATION_CONFIRMATION -> {
                         ApplicationConfirmationScreen(
                             onDismissPreview = {
@@ -557,6 +725,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // MY APPLICATIONS
+                    // -------------------------------------------------
                     AppScreen.MY_APPLICATIONS -> {
                         MyApplicationsScreen(
                             onNavigateHome = {
@@ -573,6 +744,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // STUDENT PROFILE
+                    // -------------------------------------------------
                     AppScreen.STUDENT_PROFILE -> {
                         StudentProfileScreen(
                             studentName = loggedInStudentName,
@@ -599,11 +773,15 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onLogOut = {
+                                auth.signOut()
                                 currentScreen = AppScreen.LOGIN
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // STUDENT NOTIFICATION PREFERENCES
+                    // -------------------------------------------------
                     AppScreen.STUDENT_NOTIFICATION_PREFERENCES -> {
                         StudentNotificationPreferencesScreen(
                             onBackClick = {
@@ -612,6 +790,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // EMPLOYER HOME
+                    // -------------------------------------------------
                     AppScreen.EMPLOYER_HOME -> {
                         EmployerHomeScreen(
                             companyName = loggedInEmployerCompanyName,
@@ -620,12 +801,16 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = AppScreen.POST_INTERNSHIP
                             },
 
-                            onViewApplicantsClick = {
+                            onViewApplicantsClick = { internshipId ->
+                                // The callback now receives the actual
+                                // internship document ID.
                                 currentScreen =
                                     AppScreen.EMPLOYER_RECEIVED_APPLICATIONS
                             },
 
-                            onReviewApplicantClick = {
+                            onReviewApplicantClick = { appId ->
+                                selectedApplicationId = appId
+
                                 currentScreen =
                                     AppScreen.EMPLOYER_APPLICATION_REVIEW
                             },
@@ -652,11 +837,15 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onLogOutClick = {
+                                auth.signOut()
                                 currentScreen = AppScreen.LOGIN
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // POST INTERNSHIP
+                    // -------------------------------------------------
                     AppScreen.POST_INTERNSHIP -> {
                         PostInternshipScreen(
                             onCloseClick = {
@@ -669,9 +858,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // EMPLOYER RECEIVED APPLICATIONS
+                    // -------------------------------------------------
                     AppScreen.EMPLOYER_RECEIVED_APPLICATIONS -> {
                         EmployerReceivedApplications(
-                            onApplicantClick = {
+                            onApplicantClick = { appId ->
+                                selectedApplicationId = appId
+
                                 currentScreen =
                                     AppScreen.EMPLOYER_APPLICATION_REVIEW
                             },
@@ -695,10 +889,16 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // EMPLOYER APPLICATION REVIEW
+                    // -------------------------------------------------
                     AppScreen.EMPLOYER_APPLICATION_REVIEW -> {
                         EmployerApplicationReview(
+                            applicationId = selectedApplicationId,
+
                             onBackClick = {
-                                currentScreen = AppScreen.EMPLOYER_HOME
+                                currentScreen =
+                                    AppScreen.EMPLOYER_RECEIVED_APPLICATIONS
                             },
 
                             onAcceptSuccess = {
@@ -730,6 +930,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // EMPLOYER PROFILE
+                    // -------------------------------------------------
                     AppScreen.EMPLOYER_PROFILE -> {
                         EmployerProfileScreen(
                             companyName = loggedInEmployerCompanyName,
@@ -761,11 +964,15 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onLogOutClick = {
+                                auth.signOut()
                                 currentScreen = AppScreen.LOGIN
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // EMPLOYER NOTIFICATION PREFERENCES
+                    // -------------------------------------------------
                     AppScreen.EMPLOYER_NOTIFICATION_PREFERENCES -> {
                         EmployerNotificationPreferencesScreen(
                             onBackClick = {
@@ -774,6 +981,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // ADMIN DASHBOARD
+                    // -------------------------------------------------
                     AppScreen.ADMIN_DASHBOARD -> {
                         AdminDashboardScreen(
                             onNavigateEmployers = {
@@ -796,11 +1006,15 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onLogOut = {
+                                auth.signOut()
                                 currentScreen = AppScreen.LOGIN
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // ADMIN EMPLOYERS
+                    // -------------------------------------------------
                     AppScreen.ADMIN_EMPLOYERS -> {
                         AdminEmployerManagementScreen(
                             onNavigateDashboard = {
@@ -817,6 +1031,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // ADMIN INTERNSHIPS
+                    // -------------------------------------------------
                     AppScreen.ADMIN_INTERNSHIPS -> {
                         AdminInternshipManagementScreen(
                             onNavigateDashboard = {
@@ -833,8 +1050,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // ADMIN REPORTS
+                    // -------------------------------------------------
                     AppScreen.ADMIN_REPORTS -> {
-                        AdminReportsScreen(
+                        AdminAccountsScreen(
                             onNavigateDashboard = {
                                 currentScreen = AppScreen.ADMIN_DASHBOARD
                             },
@@ -848,11 +1068,15 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onLogOut = {
+                                auth.signOut()
                                 currentScreen = AppScreen.LOGIN
                             }
                         )
                     }
 
+                    // -------------------------------------------------
+                    // NOTIFICATIONS
+                    // -------------------------------------------------
                     AppScreen.NOTIFICATIONS -> {
                         NotificationScreen(
                             onBackClick = {
@@ -861,6 +1085,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // -------------------------------------------------
+                    // FORGOT PASSWORD
+                    // -------------------------------------------------
                     AppScreen.FORGOT_PASSWORD -> {
                         ForgotPasswordScreen(
                             onBackClick = {

@@ -60,7 +60,6 @@ import java.util.Locale
 
 private val AdminDarkNavy = Color(0xFF0F2C59)
 private val AdminAccentBlue = Color(0xFF1E3A8A)
-private val RedReject = Color(0xFFDC2626)
 
 @Composable
 fun AdminEmployerManagementScreen(
@@ -357,66 +356,51 @@ private fun EmployerCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Row(verticalAlignment = Alignment.Top, modifier = Modifier.weight(1f)) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .background(Color(0xFFEFF6FF), RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        FactoryIcon(modifier = Modifier.size(28.dp), tint = AdminAccentBlue)
-                    }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    // Company Information Hierarchy
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "COMPANY INFORMATION",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF64748B),
-                            letterSpacing = 0.5.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = companyName,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AdminDarkNavy
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = industry,
-                            fontSize = 13.sp,
-                            color = Color(0xFF475569)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            LocationPinIcon(modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = location,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF475569)
-                            )
-                        }
-                    }
+                // Company Information Hierarchy
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "COMPANY INFORMATION",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF64748B),
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = companyName,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminDarkNavy
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = industry,
+                        fontSize = 13.sp,
+                        color = Color(0xFF475569)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = location,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF475569)
+                    )
                 }
 
                 // Status Indicator Badge
                 Surface(
                     shape = RoundedCornerShape(50),
                     color = when {
-                        status.equals("Approved", ignoreCase = true) -> Color(0xFFDCFCE7)
+                        status.equals("Approved", ignoreCase = true) -> Color(0xFFDBEAFE)
+                        status.equals("Active", ignoreCase = true) -> Color(0xFFE0F2FE)
                         status.equals("Rejected", ignoreCase = true) -> Color(0xFFFEE2E2)
                         else -> Color(0xFFEFF6FF)
                     },
                     border = BorderStroke(
                         1.dp,
                         when {
-                            status.equals("Approved", ignoreCase = true) -> Color(0xFF86EFAC)
+                            status.equals("Approved", ignoreCase = true) -> Color(0xFF93C5FD)
+                            status.equals("Active", ignoreCase = true) -> Color(0xFF7DD3FC)
                             status.equals("Rejected", ignoreCase = true) -> Color(0xFFFCA5A5)
                             else -> Color(0xFFBFDBFE)
                         }
@@ -427,7 +411,8 @@ private fun EmployerCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
-                            status.equals("Approved", ignoreCase = true) -> Color(0xFF166534)
+                            status.equals("Approved", ignoreCase = true) -> Color(0xFF1E40AF)
+                            status.equals("Active", ignoreCase = true) -> Color(0xFF0369A1)
                             status.equals("Rejected", ignoreCase = true) -> Color(0xFF991B1B)
                             else -> Color(0xFF1E3A8A)
                         },
@@ -450,16 +435,12 @@ private fun EmployerCard(
                     letterSpacing = 0.5.sp
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CalendarIcon(modifier = Modifier.size(15.dp), tint = Color(0xFF64748B))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Submitted $dateFormatted",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF475569)
-                    )
-                }
+                Text(
+                    text = "Submitted $dateFormatted",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF475569)
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -517,7 +498,8 @@ private fun EmployerCard(
                 }
             }
 
-            if (status.equals("Pending", ignoreCase = true) || status.isBlank()) {
+            val isApproved = status.equals("Approved", ignoreCase = true)
+            if (!isApproved) {
                 Spacer(modifier = Modifier.height(18.dp))
                 HorizontalDivider(color = Color(0xFFF1F5F9))
                 Spacer(modifier = Modifier.height(16.dp))
@@ -535,8 +517,6 @@ private fun EmployerCard(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AdminDarkNavy)
                     ) {
-                        CheckCircleIcon(modifier = Modifier.size(18.dp), tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "Approve", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
 
@@ -549,47 +529,11 @@ private fun EmployerCard(
                         border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
                     ) {
-                        CrossIcon(modifier = Modifier.size(18.dp), tint = Color(0xFF0F172A))
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "Reject", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun FactoryIcon(modifier: Modifier = Modifier, tint: Color = AdminAccentBlue) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val building = Path().apply {
-            moveTo(w * 0.15f, h * 0.85f)
-            lineTo(w * 0.15f, h * 0.45f)
-            lineTo(w * 0.45f, h * 0.30f)
-            lineTo(w * 0.45f, h * 0.85f)
-            close()
-        }
-        drawPath(building, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        val chimney = Path().apply {
-            moveTo(w * 0.55f, h * 0.85f)
-            lineTo(w * 0.55f, h * 0.20f)
-            lineTo(w * 0.85f, h * 0.35f)
-            lineTo(w * 0.85f, h * 0.85f)
-            close()
-        }
-        drawPath(chimney, color = tint, style = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
-
-@Composable
-fun CrossIcon(modifier: Modifier = Modifier, tint: Color = RedReject) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawLine(color = tint, start = Offset(w * 0.2f, h * 0.2f), end = Offset(w * 0.8f, h * 0.8f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.8f, h * 0.2f), end = Offset(w * 0.2f, h * 0.8f), strokeWidth = w * 0.12f, cap = StrokeCap.Round)
     }
 }
 

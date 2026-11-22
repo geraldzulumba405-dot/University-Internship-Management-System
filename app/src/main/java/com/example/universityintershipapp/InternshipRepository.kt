@@ -1,3 +1,4 @@
+
 package com.example.universityintershipapp
 
 import com.google.firebase.auth.FirebaseAuth
@@ -20,7 +21,7 @@ data class InternshipModel(
     val reqPortfolio: Boolean = true,
     val companyName: String = "",
     val postedByUid: String = "",
-    val status: String = "pending", // "pending", "published", "rejected", "removed"
+    val status: String = "pending",
     val workMode: String = "On-site",
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -31,8 +32,12 @@ sealed class InternshipResult {
 }
 
 object InternshipRepository {
-    private val db: FirebaseFirestore get() = FirebaseFirestore.getInstance()
-    private val auth: FirebaseAuth get() = FirebaseAuth.getInstance()
+
+    private val db: FirebaseFirestore
+        get() = FirebaseFirestore.getInstance()
+
+    private val auth: FirebaseAuth
+        get() = FirebaseAuth.getInstance()
 
     suspend fun postInternship(
         title: String,
@@ -49,22 +54,24 @@ object InternshipRepository {
         workMode: String
     ): InternshipResult {
         return try {
-            val docRef = db.collection("internships").document()
-            val id = docRef.id
-            val currentUid = auth.currentUser?.uid ?: "employer-uid"
+            val currentUid = auth.currentUser?.uid
+                ?: return InternshipResult.Error(
+                    "Please log in before posting an internship."
+                )
 
-            var companyName = "Apex Tech Solutions"
-            if (auth.currentUser != null) {
-                try {
-                    val userDoc = db.collection("users").document(currentUid).get().await()
-                    companyName = userDoc.getString("companyName")
-                        ?: userDoc.getString("fullName")
-                        ?: "Apex Tech Solutions"
-                } catch (_: Exception) {}
-            }
+            val userDoc = db.collection("users")
+                .document(currentUid)
+                .get()
+                .await()
+
+            val companyName = userDoc.getString("companyName")
+                ?.takeIf { it.isNotBlank() }
+                ?: "Company name not provided"
+
+            val docRef = db.collection("internships").document()
 
             val internshipData = hashMapOf(
-                "id" to id,
+                "id" to docRef.id,
                 "title" to title.trim(),
                 "fieldOfStudy" to fieldOfStudy.trim(),
                 "location" to location.trim(),
@@ -85,8 +92,12 @@ object InternshipRepository {
 
             docRef.set(internshipData).await()
             InternshipResult.Success
+
         } catch (e: Exception) {
-            InternshipResult.Error(e.localizedMessage ?: "Failed to post internship. Please check network connection.")
+            InternshipResult.Error(
+                e.localizedMessage
+                    ?: "Failed to post internship. Please check your network connection."
+            )
         }
     }
 
@@ -98,7 +109,7 @@ object InternshipRepository {
                 .await()
 
             snapshot.documents.mapNotNull { doc ->
-                doc.toObject(InternshipModel::class.java)
+                doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {
             emptyList()
@@ -114,35 +125,32 @@ object InternshipRepository {
                 .await()
 
             snapshot.documents.mapNotNull { doc ->
-                doc.toObject(InternshipModel::class.java)
+                doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {
-            // Fallback if index missing: fetch all and filter in memory
             try {
-                getInternships().filter { it.status == "published" || it.status.isBlank() }
-            } catch (_: Exception) {
+                getInternships().filter { it.status == "published" }
+            } catch (e: Exception) {
                 emptyList()
             }
         }
     }
 
     suspend fun getEmployerInternships(uid: String): List<InternshipModel> {
+        if (uid.isBlank()) return emptyList()
+
         return try {
             val snapshot = db.collection("internships")
                 .whereEqualTo("postedByUid", uid)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
             snapshot.documents.mapNotNull { doc ->
-                doc.toObject(InternshipModel::class.java)
-            }
+                doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
+            }.sortedByDescending { it.createdAt }
+
         } catch (e: Exception) {
-            try {
-                getInternships().filter { it.postedByUid == uid }
-            } catch (_: Exception) {
-                emptyList()
-            }
+            emptyList()
         }
     }
 
@@ -155,25 +163,33 @@ object InternshipRepository {
                 .await()
 
             snapshot.documents.mapNotNull { doc ->
-                doc.toObject(InternshipModel::class.java)
+                doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {
             try {
-                getInternships().filter { it.status == "pending" || it.status.isBlank() }
-            } catch (_: Exception) {
+                getInternships().filter { it.status == "pending" }
+            } catch (e: Exception) {
                 emptyList()
             }
         }
     }
 
-    suspend fun updateInternshipStatus(id: String, newStatus: String): InternshipResult {
+    suspend fun updateInternshipStatus(
+        id: String,
+        newStatus: String
+    ): InternshipResult {
         return try {
-            db.collection("internships").document(id)
+            db.collection("internships")
+                .document(id)
                 .update("status", newStatus)
                 .await()
+
             InternshipResult.Success
+
         } catch (e: Exception) {
-            InternshipResult.Error(e.localizedMessage ?: "Failed to update internship status.")
+            InternshipResult.Error(
+                e.localizedMessage ?: "Failed to update internship status."
+            )
         }
     }
 }

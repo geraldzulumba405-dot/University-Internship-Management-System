@@ -1,3 +1,4 @@
+
 package com.example.universityintershipapp
 
 import androidx.compose.foundation.BorderStroke
@@ -26,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,26 +56,70 @@ fun NotificationScreen(
     onBackClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
-    var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(Unit) {
-        isLoading = true
-        try {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "test-student-uid"
-            val fallbackUid = "test-student-uid"
-            FirebaseFirestore.getInstance().collection("notifications")
-                .whereIn("recipientUid", listOf(uid, fallbackUid).distinct())
-                .addSnapshotListener { snapshot, _ ->
-                    isLoading = false
-                    if (snapshot != null) {
-                        notifications = snapshot.documents.mapNotNull { doc ->
-                            doc.toObject(NotificationItem::class.java)?.copy(id = doc.id)
-                        }.distinctBy { it.id }.sortedByDescending { it.createdAt }
+    val isInspectMode = LocalInspectionMode.current
+    val currentUserId = remember {
+        if (isInspectMode) {
+            null
+        } else {
+            try {
+                FirebaseAuth.getInstance().currentUser?.uid
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    var notifications by remember {
+        mutableStateOf<List<NotificationItem>>(emptyList())
+    }
+
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Listen to notifications belonging to the authenticated user and alias/fallback UIDs.
+    DisposableEffect(currentUserId) {
+
+        if (currentUserId == null) {
+            notifications = emptyList()
+            isLoading = false
+            errorMessage = "Please log in to view your notifications."
+
+            onDispose { }
+        } else {
+            isLoading = true
+            errorMessage = null
+
+            val uidsToQuery = listOfNotNull(
+                currentUserId,
+                "employer-uid",
+                "test-employer-uid"
+            ).distinct()
+
+            val listener = FirebaseFirestore.getInstance()
+                .collection("notifications")
+                .addSnapshotListener { snapshot, error ->
+
+                    if (error != null) {
+                        isLoading = false
+                        errorMessage = "Unable to load notifications. Please try again."
+                    } else if (snapshot != null) {
+                        notifications = snapshot.documents.mapNotNull { document ->
+                            parseNotification(document)
+                        }.filter { item ->
+                            val recip = item.effectiveRecipientUid
+                            recip.isBlank() || uidsToQuery.contains(recip) || recip == currentUserId
+                        }.sortedByDescending { it.createdAt }
+
+                        isLoading = false
+                        errorMessage = null
                     }
                 }
-        } catch (_: Exception) {
-            isLoading = false
+
+            onDispose {
+                // Stop listening when the screen is removed.
+                listener.remove()
+            }
         }
     }
 
@@ -90,7 +137,8 @@ fun NotificationScreen(
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top Bar Header
+
+            // Top bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,7 +152,10 @@ fun NotificationScreen(
                         .clickable { onBackClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    BackArrowIcon(modifier = Modifier.size(20.dp), tint = textPrimary)
+                    BackArrowIcon(
+                        modifier = Modifier.size(20.dp),
+                        tint = textPrimary
+                    )
                 }
 
                 Box(
@@ -119,18 +170,22 @@ fun NotificationScreen(
                     )
                 }
 
-                // Mark All as Read button
-                if (notifications.any { !it.isRead }) {
+                if (notifications.any { !it.effectiveIsRead }) {
                     Text(
                         text = "Mark all read",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = primaryBlue,
                         modifier = Modifier.clickable {
-                            scope.launch {
-                                val uid = FirebaseAuth.getInstance().currentUser?.uid
-                                if (uid != null) {
-                                    NotificationRepository.markAllAsRead(uid)
+                            val uid = currentUserId ?: FirebaseAuth.getInstance().currentUser?.uid
+
+                            if (!uid.isNullOrBlank()) {
+                                scope.launch {
+                                    try {
+                                        NotificationRepository.markAllAsRead(uid)
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("NotificationScreen", "Error marking all notifications as read", e)
+                                    }
                                 }
                             }
                         }
@@ -140,9 +195,12 @@ fun NotificationScreen(
                 }
             }
 
-            HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
+            HorizontalDivider(
+                color = Color(0xFFE2E8F0),
+                thickness = 1.dp
+            )
 
-            // Scrollable Content
+            // Notification content
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -150,48 +208,96 @@ fun NotificationScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (isLoading) {
-                    Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        Text(text = "Loading notifications...", fontSize = 13.sp, color = textSecondary)
-                    }
-                } else if (notifications.isEmpty()) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No notifications yet",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textPrimary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "We'll notify you when there are updates on your applications or postings.",
-                                fontSize = 12.sp,
-                                color = textSecondary,
-                                maxLines = 2
+                                text = "Loading notifications...",
+                                fontSize = 13.sp,
+                                color = textSecondary
                             )
                         }
                     }
-                } else {
-                    notifications.forEach { item ->
-                        NotificationCard(
-                            item = item,
-                            onClick = {
-                                if (!item.isRead) {
-                                    scope.launch {
-                                        NotificationRepository.markAsRead(item.id)
+
+                    errorMessage != null -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(
+                                1.dp,
+                                Color(0xFFE2E8F0)
+                            )
+                        ) {
+                            Text(
+                                text = errorMessage ?: "Something went wrong.",
+                                modifier = Modifier.padding(24.dp),
+                                fontSize = 13.sp,
+                                color = textSecondary
+                            )
+                        }
+                    }
+
+                    notifications.isEmpty() -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(
+                                1.dp,
+                                Color(0xFFE2E8F0)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "No notifications yet",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textPrimary
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Text(
+                                    text = "We'll notify you when there are updates on your applications or postings.",
+                                    fontSize = 12.sp,
+                                    color = textSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        notifications.forEach { item ->
+
+                            NotificationCard(
+                                item = item,
+                                onClick = {
+                                    if (!item.effectiveIsRead) {
+                                        scope.launch {
+                                            val uid = currentUserId 
+                                                ?: item.effectiveRecipientUid.takeIf { it.isNotBlank() } 
+                                                ?: FirebaseAuth.getInstance().currentUser?.uid 
+                                                ?: "test-student-uid"
+                                            try {
+                                                NotificationRepository.markAsRead(item.id, uid)
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("NotificationScreen", "Error marking notification as read", e)
+                                            }
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -204,9 +310,14 @@ private fun NotificationCard(
     item: NotificationItem,
     onClick: () -> Unit
 ) {
+    val isRead = item.effectiveIsRead
+
     val dateStr = remember(item.createdAt) {
         try {
-            val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+            val sdf = SimpleDateFormat(
+                "dd MMM yyyy, HH:mm",
+                Locale.getDefault()
+            )
             sdf.format(Date(item.createdAt))
         } catch (_: Exception) {
             "Recently"
@@ -223,9 +334,16 @@ private fun NotificationCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.isRead) Color.White else Color(0xFFEFF6FF)
+            containerColor = if (isRead) {
+                Color.White
+            } else {
+                Color(0xFFEFF6FF)
+            }
         ),
-        border = BorderStroke(1.dp, if (item.isRead) Color(0xFFE2E8F0) else Color(0xFFBFDBFE))
+        border = BorderStroke(
+            1.dp,
+            if (isRead) Color(0xFFE2E8F0) else Color(0xFFBFDBFE)
+        )
     ) {
         Row(
             modifier = Modifier
@@ -233,16 +351,18 @@ private fun NotificationCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            if (!item.isRead) {
+            if (!isRead) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
                         .background(primaryBlue, CircleShape)
                 )
+
                 Spacer(modifier = Modifier.width(10.dp))
             }
 
             Column(modifier = Modifier.weight(1f)) {
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -255,6 +375,7 @@ private fun NotificationCard(
                         color = textPrimary,
                         modifier = Modifier.weight(1f)
                     )
+
                     Text(
                         text = dateStr,
                         fontSize = 10.sp,
