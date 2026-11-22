@@ -38,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -57,7 +56,7 @@ data class InternshipSearchItem(
     val title: String,
     val company: String,
     val location: String,
-    val workType: String, // "Remote", "On-site"
+    val workType: String,
     val isPaid: Boolean,
     val deadline: String,
     val tags: List<TagData>
@@ -78,25 +77,35 @@ fun StudentInternshipScreen(
     onHomeNavClick: () -> Unit = {},
     onApplicationsNavClick: () -> Unit = {},
     onProfileNavClick: () -> Unit = {},
-    onApplyClick: (String, String, String) -> Unit = { _, _, _ -> },
+    onApplyClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedBottomNav by remember { mutableIntStateOf(1) }
 
-    // Mutually exclusive single-choice filter state ("All", "Remote", "On-site", "Hybrid")
+    // Mutually exclusive single-choice filter state.
     var selectedFilter by remember { mutableStateOf<String?>("All") }
 
-    var firestoreListings by remember { mutableStateOf<List<InternshipSearchItem>>(emptyList()) }
+    var firestoreListings by remember {
+        mutableStateOf<List<InternshipSearchItem>>(emptyList())
+    }
 
+    // Retrieve published internships from Firestore.
     LaunchedEffect(Unit) {
-        val remoteJobs = InternshipRepository.getInternships()
-        if (remoteJobs.isNotEmpty()) {
+        try {
+            val remoteJobs = InternshipRepository.getPublishedInternships()
+
             firestoreListings = remoteJobs.map { item ->
+
                 val workMode = item.workMode.ifEmpty {
-                    if (item.location.contains("Remote", ignoreCase = true)) "Remote"
-                    else if (item.location.contains("Hybrid", ignoreCase = true)) "Hybrid"
-                    else "On-site"
+                    if (item.location.contains("Remote", ignoreCase = true)) {
+                        "Remote"
+                    } else if (item.location.contains("Hybrid", ignoreCase = true)) {
+                        "Hybrid"
+                    } else {
+                        "On-site"
+                    }
                 }
+
                 InternshipSearchItem(
                     id = item.id,
                     title = item.title,
@@ -106,20 +115,40 @@ fun StudentInternshipScreen(
                     isPaid = true,
                     deadline = item.deadline,
                     tags = listOf(
-                        TagData(workMode, Color(0xFFDBEAFE), Color(0xFF1E40AF)),
-                        TagData(item.duration, Color(0xFFE0E7FF), Color(0xFF4338CA)),
-                        TagData(item.fieldOfStudy, Color(0xFFF1F5F9), Color(0xFF475569))
+                        TagData(
+                            workMode,
+                            Color(0xFFDBEAFE),
+                            Color(0xFF1E40AF)
+                        ),
+                        TagData(
+                            item.duration,
+                            Color(0xFFE0E7FF),
+                            Color(0xFF4338CA)
+                        ),
+                        TagData(
+                            item.fieldOfStudy,
+                            Color(0xFFF1F5F9),
+                            Color(0xFF475569)
+                        )
                     )
                 )
             }
+
+        } catch (e: Exception) {
+            firestoreListings = emptyList()
         }
     }
 
     val allListings = firestoreListings
 
-    // Reactive Filtered Results
-    val filteredListings = remember(searchQuery, selectedFilter, firestoreListings) {
+    // Filter search results.
+    val filteredListings = remember(
+        searchQuery,
+        selectedFilter,
+        firestoreListings
+    ) {
         allListings.filter { item ->
+
             val matchesQuery = searchQuery.isBlank() ||
                     item.title.contains(searchQuery, ignoreCase = true) ||
                     item.company.contains(searchQuery, ignoreCase = true) ||
@@ -147,6 +176,7 @@ fun StudentInternshipScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
+
             // 1. Top Bar Header
             Row(
                 modifier = Modifier
@@ -178,7 +208,10 @@ fun StudentInternshipScreen(
                 }
             }
 
-            HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
+            HorizontalDivider(
+                color = Color(0xFFE2E8F0),
+                thickness = 1.dp
+            )
 
             // Scrollable Content
             Column(
@@ -187,6 +220,7 @@ fun StudentInternshipScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
+
                 // 2. Search Input Bar
                 OutlinedTextField(
                     value = searchQuery,
@@ -234,7 +268,7 @@ fun StudentInternshipScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 3. Filter Chips Row (Interactive Buttons)
+                // 3. Filter Chips Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -242,22 +276,35 @@ fun StudentInternshipScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val isAllSelected = selectedFilter == null || selectedFilter == "All"
+                    val isAllSelected =
+                        selectedFilter == null || selectedFilter == "All"
+
                     val isRemoteSelected = selectedFilter == "Remote"
                     val isOnSiteSelected = selectedFilter == "On-site"
                     val isHybridSelected = selectedFilter == "Hybrid"
 
-                    // Chip 0: All
+                    // All
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = if (isAllSelected) Color(0xFFBFDBFE) else Color.White,
-                        border = BorderStroke(1.dp, if (isAllSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                        color = if (isAllSelected) {
+                            Color(0xFFBFDBFE)
+                        } else {
+                            Color.White
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isAllSelected) Color(0xFF1D4ED8)
+                            else Color(0xFFCBD5E1)
+                        ),
                         modifier = Modifier.clickable {
                             selectedFilter = "All"
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = 7.dp
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -265,22 +312,38 @@ fun StudentInternshipScreen(
                                 text = "All",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isAllSelected) Color(0xFF1E3A8A) else Color(0xFF334155)
+                                color = if (isAllSelected) {
+                                    Color(0xFF1E3A8A)
+                                } else {
+                                    Color(0xFF334155)
+                                }
                             )
                         }
                     }
 
-                    // Chip 1: Remote
+                    // Remote
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = if (isRemoteSelected) Color(0xFFBFDBFE) else Color.White,
-                        border = BorderStroke(1.dp, if (isRemoteSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                        color = if (isRemoteSelected) {
+                            Color(0xFFBFDBFE)
+                        } else {
+                            Color.White
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isRemoteSelected) Color(0xFF1D4ED8)
+                            else Color(0xFFCBD5E1)
+                        ),
                         modifier = Modifier.clickable {
-                            selectedFilter = if (isRemoteSelected) null else "Remote"
+                            selectedFilter =
+                                if (isRemoteSelected) null else "Remote"
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = 7.dp
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -288,22 +351,38 @@ fun StudentInternshipScreen(
                                 text = "Remote",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isRemoteSelected) Color(0xFF1E3A8A) else Color(0xFF334155)
+                                color = if (isRemoteSelected) {
+                                    Color(0xFF1E3A8A)
+                                } else {
+                                    Color(0xFF334155)
+                                }
                             )
                         }
                     }
 
-                    // Chip 2: On-site
+                    // On-site
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = if (isOnSiteSelected) Color(0xFFBFDBFE) else Color.White,
-                        border = BorderStroke(1.dp, if (isOnSiteSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                        color = if (isOnSiteSelected) {
+                            Color(0xFFBFDBFE)
+                        } else {
+                            Color.White
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isOnSiteSelected) Color(0xFF1D4ED8)
+                            else Color(0xFFCBD5E1)
+                        ),
                         modifier = Modifier.clickable {
-                            selectedFilter = if (isOnSiteSelected) null else "On-site"
+                            selectedFilter =
+                                if (isOnSiteSelected) null else "On-site"
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = 7.dp
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -311,22 +390,38 @@ fun StudentInternshipScreen(
                                 text = "On-site",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOnSiteSelected) Color(0xFF1E3A8A) else Color(0xFF334155)
+                                color = if (isOnSiteSelected) {
+                                    Color(0xFF1E3A8A)
+                                } else {
+                                    Color(0xFF334155)
+                                }
                             )
                         }
                     }
 
-                    // Chip 3: Hybrid
+                    // Hybrid
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = if (isHybridSelected) Color(0xFFBFDBFE) else Color.White,
-                        border = BorderStroke(1.dp, if (isHybridSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                        color = if (isHybridSelected) {
+                            Color(0xFFBFDBFE)
+                        } else {
+                            Color.White
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (isHybridSelected) Color(0xFF1D4ED8)
+                            else Color(0xFFCBD5E1)
+                        ),
                         modifier = Modifier.clickable {
-                            selectedFilter = if (isHybridSelected) null else "Hybrid"
+                            selectedFilter =
+                                if (isHybridSelected) null else "Hybrid"
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = 7.dp
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -334,7 +429,11 @@ fun StudentInternshipScreen(
                                 text = "Hybrid",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isHybridSelected) Color(0xFF1E3A8A) else Color(0xFF334155)
+                                color = if (isHybridSelected) {
+                                    Color(0xFF1E3A8A)
+                                } else {
+                                    Color(0xFF334155)
+                                }
                             )
                         }
                     }
@@ -342,9 +441,9 @@ fun StudentInternshipScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // 5. Filtered Search Results
+                // 4. Filtered Search Results
                 if (filteredListings.isEmpty()) {
-                    // Empty Filtered State
+
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -365,15 +464,27 @@ fun StudentInternshipScreen(
                             )
                         }
                     }
+
                 } else {
+
                     filteredListings.forEachIndexed { index, item ->
+
                         SearchResultCard(
                             title = item.title,
                             company = item.company,
                             location = item.location,
                             tags = item.tags,
                             deadline = item.deadline,
-                            onApplyClick = { onApplyClick(item.title, item.company, item.location) }
+
+                            // Pass the actual Firestore document ID.
+                            onApplyClick = {
+                                onApplyClick(
+                                    item.id,
+                                    item.title,
+                                    item.company,
+                                    item.location
+                                )
+                            }
                         )
 
                         if (index < filteredListings.size - 1) {
@@ -385,8 +496,11 @@ fun StudentInternshipScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // 6. Bottom Navigation Bar
-            HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
+            // 5. Bottom Navigation Bar
+            HorizontalDivider(
+                color = Color(0xFFE2E8F0),
+                thickness = 1.dp
+            )
 
             Row(
                 modifier = Modifier
@@ -396,10 +510,20 @@ fun StudentInternshipScreen(
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
                 BottomNavItem(
                     label = "Home",
                     isSelected = selectedBottomNav == 0,
-                    icon = { HomeNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 0) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
+                    icon = {
+                        HomeNavIcon(
+                            modifier = Modifier.size(20.dp),
+                            tint = if (selectedBottomNav == 0) {
+                                Color(0xFF1E3A8A)
+                            } else {
+                                Color(0xFF64748B)
+                            }
+                        )
+                    },
                     onClick = {
                         selectedBottomNav = 0
                         onHomeNavClick()
@@ -409,14 +533,34 @@ fun StudentInternshipScreen(
                 BottomNavItem(
                     label = "Internships",
                     isSelected = selectedBottomNav == 1,
-                    icon = { BriefcaseIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 1) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
-                    onClick = { selectedBottomNav = 1 }
+                    icon = {
+                        BriefcaseIcon(
+                            modifier = Modifier.size(20.dp),
+                            tint = if (selectedBottomNav == 1) {
+                                Color(0xFF1E3A8A)
+                            } else {
+                                Color(0xFF64748B)
+                            }
+                        )
+                    },
+                    onClick = {
+                        selectedBottomNav = 1
+                    }
                 )
 
                 BottomNavItem(
                     label = "Applications",
                     isSelected = selectedBottomNav == 2,
-                    icon = { ApplicationsNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 2) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
+                    icon = {
+                        ApplicationsNavIcon(
+                            modifier = Modifier.size(20.dp),
+                            tint = if (selectedBottomNav == 2) {
+                                Color(0xFF1E3A8A)
+                            } else {
+                                Color(0xFF64748B)
+                            }
+                        )
+                    },
                     onClick = {
                         selectedBottomNav = 2
                         onApplicationsNavClick()
@@ -426,7 +570,16 @@ fun StudentInternshipScreen(
                 BottomNavItem(
                     label = "Profile",
                     isSelected = selectedBottomNav == 3,
-                    icon = { ProfileNavIcon(modifier = Modifier.size(20.dp), tint = if (selectedBottomNav == 3) Color(0xFF1E3A8A) else Color(0xFF64748B)) },
+                    icon = {
+                        ProfileNavIcon(
+                            modifier = Modifier.size(20.dp),
+                            tint = if (selectedBottomNav == 3) {
+                                Color(0xFF1E3A8A)
+                            } else {
+                                Color(0xFF64748B)
+                            }
+                        )
+                    },
                     onClick = {
                         selectedBottomNav = 3
                         onProfileNavClick()
@@ -454,20 +607,27 @@ fun SearchResultCard(
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         shadowElevation = 1.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
             // Top Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = title,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0F172A)
                     )
+
                     Spacer(modifier = Modifier.height(2.dp))
+
                     Text(
                         text = "$company • $location",
                         fontSize = 13.sp,
@@ -479,25 +639,33 @@ fun SearchResultCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Tag Chips Flow/Row
+            // Tag Chips
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 tags.forEach { (label, backgroundColor, textColor, showClock) ->
+
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = backgroundColor
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 8.dp,
+                                vertical = 4.dp
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             if (showClock) {
-                                ClockIcon(modifier = Modifier.size(12.dp), tint = textColor)
+                                ClockIcon(
+                                    modifier = Modifier.size(12.dp),
+                                    tint = textColor
+                                )
                             }
+
                             Text(
                                 text = label,
                                 fontSize = 11.sp,
@@ -511,7 +679,10 @@ fun SearchResultCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+            HorizontalDivider(
+                color = Color(0xFFF1F5F9),
+                thickness = 1.dp
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -532,6 +703,7 @@ fun SearchResultCard(
                         color = Color(0xFF334155),
                         maxLines = 1
                     )
+
                     Text(
                         text = deadline,
                         fontSize = 12.sp,
@@ -547,7 +719,9 @@ fun SearchResultCard(
                 Button(
                     onClick = onApplyClick,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F2C59)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF0F2C59)
+                    ),
                     modifier = Modifier.height(38.dp)
                 ) {
                     Text(
@@ -571,11 +745,29 @@ fun ClearCircleIcon(
         val w = size.width
         val h = size.height
 
-        drawCircle(color = Color(0xFFE2E8F0), radius = w * 0.45f, center = Offset(w * 0.5f, h * 0.5f))
+        drawCircle(
+            color = Color(0xFFE2E8F0),
+            radius = w * 0.45f,
+            center = Offset(w * 0.5f, h * 0.5f)
+        )
 
         val stroke = w * 0.08f
-        drawLine(color = tint, start = Offset(w * 0.35f, h * 0.35f), end = Offset(w * 0.65f, h * 0.65f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.65f, h * 0.35f), end = Offset(w * 0.35f, h * 0.65f), strokeWidth = stroke, cap = StrokeCap.Round)
+
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.35f, h * 0.35f),
+            end = Offset(w * 0.65f, h * 0.65f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.65f, h * 0.35f),
+            end = Offset(w * 0.35f, h * 0.65f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
     }
 }
 

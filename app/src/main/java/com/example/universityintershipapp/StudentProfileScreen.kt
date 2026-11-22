@@ -33,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import android.widget.Toast
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -60,6 +62,8 @@ import androidx.compose.ui.unit.sp
 import com.example.universityintershipapp.ui.theme.UniversityIntershipAppTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 private val MintContainer = Color(0xFFCCFBF1)
@@ -92,12 +96,35 @@ fun StudentProfileScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
             val fileName = getFileName(context, uri) ?: "Document_${System.currentTimeMillis()}"
-            documentsList = documentsList + (fileName to "Uploaded just now")
+            scope.launch {
+                try {
+                    val uid = FirebaseAuth.getInstance().currentUser?.uid
+                    if (uid != null) {
+                        val db = FirebaseFirestore.getInstance()
+                        val userRef = db.collection("users").document(uid)
+                        val snapshot = userRef.get().await()
+                        val existingDocs = (snapshot.get("documents") as? List<*>)?.mapNotNull { item ->
+                            val map = item as? Map<*, *>
+                            val t = map?.get("title") as? String ?: return@mapNotNull null
+                            val s = map?.get("subtitle") as? String ?: return@mapNotNull null
+                            mapOf("title" to t, "subtitle" to s)
+                        } ?: emptyList()
+
+                        val updatedDocs = existingDocs + listOf(mapOf("title" to fileName, "subtitle" to "PDF • Uploaded just now"))
+                        userRef.update("documents", updatedDocs).await()
+                        documentsList = updatedDocs.map { (it["title"] as String) to (it["subtitle"] as String) }
+                        Toast.makeText(context, "Document added successfully!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Upload failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -115,6 +142,16 @@ fun StudentProfileScreen(
                     if (!prog.isNullOrBlank()) programmeState = prog
                     val year = userDoc.getString("yearOfStudy")
                     if (!year.isNullOrBlank()) yearOfStudyState = year
+
+                    val docs = userDoc.get("documents") as? List<*>
+                    if (docs != null) {
+                        documentsList = docs.mapNotNull { item ->
+                            val map = item as? Map<*, *>
+                            val docTitle = map?.get("title") as? String ?: "Document"
+                            val subtitle = map?.get("subtitle") as? String ?: "Uploaded"
+                            docTitle to subtitle
+                        }
+                    }
                 }
             }
         } catch (_: Exception) {}
@@ -235,13 +272,41 @@ fun StudentProfileScreen(
                             colors = CardDefaults.cardColors(containerColor = CardBackground),
                             border = BorderStroke(1.dp, OutlineVariant)
                         ) {
-                            Column(
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(14.dp)
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(docTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                Text(docSubtitle, fontSize = 11.sp, color = TextSecondary)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(docTitle, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                    Text(docSubtitle, fontSize = 11.sp, color = TextSecondary)
+                                }
+                                IconButton(
+                                    onClick = {
+                                        scope.launch {
+                                            try {
+                                                val uid = FirebaseAuth.getInstance().currentUser?.uid
+                                                if (uid != null) {
+                                                    val db = FirebaseFirestore.getInstance()
+                                                    val userRef = db.collection("users").document(uid)
+                                                    val updatedDocs = documentsList.filterNot { it.first == docTitle }
+                                                        .map { mapOf("title" to it.first, "subtitle" to it.second) }
+                                                    userRef.update("documents", updatedDocs).await()
+                                                    documentsList = updatedDocs.map { (it["title"] as String) to (it["subtitle"] as String) }
+                                                    Toast.makeText(context, "Document removed successfully!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Removal failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    ClearIcon(
+                                        modifier = Modifier.size(16.dp),
+                                        tint = RedAlertColor
+                                    )
+                                }
                             }
                         }
                     }

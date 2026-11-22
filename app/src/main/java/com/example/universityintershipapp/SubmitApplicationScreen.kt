@@ -71,12 +71,13 @@ private val RedAccentContainer = Color(0xFFFFE4E6)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubmitApplicationScreen(
+    internshipId: String = "",
     title: String = "Software Engineering Intern",
     company: String = "Google LLC",
     location: String = "Mountain View, CA (Hybrid)",
     onCloseClick: () -> Unit = {},
     onSaveDraftClick: () -> Unit = {},
-    onSubmitApplicationClick: () -> Unit = {}
+    onSubmitApplicationClick: (() -> Unit)? = null
 ) {
     var studentNameState by remember { mutableStateOf("Alex Chen") }
     var studentIdState by remember { mutableStateOf("U2021-0842") }
@@ -406,6 +407,31 @@ fun SubmitApplicationScreen(
                                             color = TextSecondary
                                         )
                                     }
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                try {
+                                                    val uid = FirebaseAuth.getInstance().currentUser?.uid
+                                                    if (uid != null) {
+                                                        val db = FirebaseFirestore.getInstance()
+                                                        val userRef = db.collection("users").document(uid)
+                                                        val updatedDocs = uploadedDocuments.filterNot { it.first == docTitle }
+                                                            .map { mapOf("title" to it.first, "subtitle" to it.second) }
+                                                        userRef.update("documents", updatedDocs).await()
+                                                        uploadedDocuments = updatedDocs.map { (it["title"] as String) to (it["subtitle"] as String) }
+                                                        Toast.makeText(context, "Document removed successfully!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Removal failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        ClearIcon(
+                                            modifier = Modifier.size(16.dp),
+                                            tint = RedAccent
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -432,7 +458,107 @@ fun SubmitApplicationScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
-                    onClick = onSubmitApplicationClick,
+                    onClick = {
+                        if (onSubmitApplicationClick != null) {
+                            onSubmitApplicationClick()
+                        } else {
+                            scope.launch {
+                                try {
+                                    val currentUser = FirebaseAuth.getInstance().currentUser
+                                    val studentUid = currentUser?.uid ?: "test-student-uid"
+                                    val studentEmail = currentUser?.email ?: "student@example.com"
+
+                                    val db = FirebaseFirestore.getInstance()
+                                    var targetInternshipId = internshipId
+                                    var employerUid = ""
+
+                                    if (targetInternshipId.isBlank()) {
+                                        try {
+                                            val snapshot = db.collection("internships")
+                                                .whereEqualTo("title", internshipTitleState)
+                                                .get()
+                                                .await()
+                                            if (!snapshot.isEmpty) {
+                                                val doc = snapshot.documents.first()
+                                                targetInternshipId = doc.id
+                                                employerUid = doc.getString("postedByUid") ?: ""
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+
+                                    if (targetInternshipId.isNotBlank() && employerUid.isBlank()) {
+                                        try {
+                                            val internshipSnapshot = db.collection("internships")
+                                                .document(targetInternshipId)
+                                                .get()
+                                                .await()
+                                            if (internshipSnapshot.exists()) {
+                                                employerUid = internshipSnapshot.getString("postedByUid") ?: ""
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+
+                                    if (employerUid.isBlank()) {
+                                        employerUid = "employer-uid"
+                                    }
+                                    if (targetInternshipId.isBlank()) {
+                                        targetInternshipId = "internship-${System.currentTimeMillis()}"
+                                    }
+
+                                    val appData = hashMapOf(
+                                        "studentUid" to studentUid,
+                                        "studentEmail" to studentEmail,
+                                        "internshipId" to targetInternshipId,
+                                        "employerUid" to employerUid,
+                                        "internshipTitle" to internshipTitleState,
+                                        "company" to companyState,
+                                        "location" to locationState,
+                                        "status" to "Under Review",
+                                        "createdAt" to System.currentTimeMillis()
+                                    )
+
+                                    val applicationRef = db.collection("applications")
+                                        .add(appData)
+                                        .await()
+
+                                    NotificationRepository.sendNotification(
+                                        recipientUid = studentUid,
+                                        title = "Application Sent & Under Review",
+                                        message = "Your application for $internshipTitleState at $companyState has been sent and is currently under review.",
+                                        type = "application_submitted",
+                                        relatedInternshipId = targetInternshipId,
+                                        relatedApplicationId = applicationRef.id
+                                    )
+
+                                    val notifyUids = listOfNotNull(
+                                        employerUid,
+                                        "employer-uid",
+                                        "test-employer-uid"
+                                    ).distinct()
+
+                                    for (eUid in notifyUids) {
+                                        if (eUid.isNotBlank()) {
+                                            try {
+                                                NotificationRepository.sendNotification(
+                                                    recipientUid = eUid,
+                                                    title = "New Internship Application",
+                                                    message = "A student ($studentNameState) has submitted an application for your $internshipTitleState opportunity.",
+                                                    type = "new_application",
+                                                    relatedInternshipId = targetInternshipId,
+                                                    relatedApplicationId = applicationRef.id
+                                                )
+                                            } catch (_: Exception) {}
+                                        }
+                                    }
+
+                                    Toast.makeText(context, "Application submitted successfully!", Toast.LENGTH_SHORT).show()
+                                    onSaveDraftClick()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Failed to submit application: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
