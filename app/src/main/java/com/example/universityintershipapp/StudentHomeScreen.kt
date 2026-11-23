@@ -84,14 +84,14 @@ fun StudentHomeScreen(
     var underReviewCount by remember { mutableIntStateOf(0) }
     var unreadCount by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
+    var appliedInternshipIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var applicationsLoadError by remember { mutableStateOf<String?>(null) }
 
     val currentStudentUid = FirebaseAuth.getInstance()
         .currentUser?.uid
 
     // Load student information, internships and application statistics.
     LaunchedEffect(currentStudentUid) {
-        isLoading = true
-
         if (currentStudentUid == null) {
             firestoreInternships = emptyList()
             availableCount = 0
@@ -101,12 +101,51 @@ fun StudentHomeScreen(
             return@LaunchedEffect
         }
 
-        try {
-            val db = FirebaseFirestore.getInstance()
+        isLoading = true
+        val db = FirebaseFirestore.getInstance()
+        val loadedAppliedIds = mutableSetOf<String>()
 
+        // 1. Cache first load
+        try {
+            val userDocCache = db.collection("users")
+                .document(currentStudentUid)
+                .get(com.google.firebase.firestore.Source.CACHE)
+                .await()
+            if (userDocCache.exists()) {
+                val prog = userDocCache.getString("programme") ?: userDocCache.getString("fieldOfStudy")
+                if (!prog.isNullOrBlank()) studentProgramme = prog
+            }
+
+            val cachedJobs = InternshipRepository.getPublishedInternships(com.google.firebase.firestore.Source.CACHE)
+            if (cachedJobs.isNotEmpty()) {
+                firestoreInternships = cachedJobs.ifEmpty {
+                    InternshipRepository.getInternships(com.google.firebase.firestore.Source.CACHE)
+                        .filter { it.status == "published" || it.status.isBlank() }
+                }
+                availableCount = firestoreInternships.size
+                isLoading = false // Show cached data immediately!
+            }
+
+            val appSnapshotCache = db.collection("applications")
+                .whereEqualTo("studentUid", currentStudentUid)
+                .get(com.google.firebase.firestore.Source.CACHE)
+                .await()
+            submittedCount = appSnapshotCache.size()
+            underReviewCount = appSnapshotCache.documents.count { doc ->
+                val status = doc.getString("status") ?: ""
+                status.equals("pending", ignoreCase = true) || status.equals("under review", ignoreCase = true)
+            }
+            appSnapshotCache.documents.forEach { doc ->
+                doc.getString("internshipId")?.let { loadedAppliedIds.add(it) }
+            }
+            appliedInternshipIds = loadedAppliedIds
+        } catch (_: Exception) {}
+
+        // 2. Server refresh in background
+        try {
             val userDoc = db.collection("users")
                 .document(currentStudentUid)
-                .get()
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .await()
 
             val programme = userDoc.getString("programme")
@@ -116,20 +155,20 @@ fun StudentHomeScreen(
                 studentProgramme = programme
             }
 
-            val jobs = InternshipRepository.getPublishedInternships()
+            val jobs = InternshipRepository.getPublishedInternships(com.google.firebase.firestore.Source.SERVER)
 
             firestoreInternships = jobs.ifEmpty {
-                InternshipRepository.getInternships()
+                InternshipRepository.getInternships(com.google.firebase.firestore.Source.SERVER)
                     .filter {
                         it.status == "published" || it.status.isBlank()
                     }
-            }
+            }.ifEmpty { firestoreInternships }
 
             availableCount = firestoreInternships.size
 
             val appSnapshot = db.collection("applications")
                 .whereEqualTo("studentUid", currentStudentUid)
-                .get()
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .await()
 
             submittedCount = appSnapshot.size()
@@ -141,18 +180,22 @@ fun StudentHomeScreen(
                         status.equals("under review", ignoreCase = true)
             }
 
+            val serverAppliedIds = mutableSetOf<String>()
+            appSnapshot.documents.forEach { doc ->
+                doc.getString("internshipId")?.let { serverAppliedIds.add(it) }
+            }
+            appliedInternshipIds = serverAppliedIds
+            applicationsLoadError = null
+
         } catch (e: Exception) {
             android.util.Log.e(
                 "StudentHomeScreen",
-                "Failed to load dashboard information",
+                "Failed to refresh dashboard information from server",
                 e
             )
-
-            firestoreInternships = emptyList()
-            availableCount = 0
-            submittedCount = 0
-            underReviewCount = 0
-
+            if (loadedAppliedIds.isEmpty() && firestoreInternships.isEmpty()) {
+                applicationsLoadError = "Unable to load your applications and internship status. Please check your connection."
+            }
         } finally {
             isLoading = false
         }
@@ -198,7 +241,7 @@ fun StudentHomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -473,7 +516,7 @@ fun StudentHomeScreen(
                     }
 
                 } else {
-                    firestoreInternships.forEach { item ->
+                    firestoreInternships.take(2).forEach { item ->
                         InternshipCard(
                             title = item.title,
                             companyLocation =
@@ -497,21 +540,6 @@ fun StudentHomeScreen(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                val hasInternshipToday = remember(firestoreInternships) {
-                    val today = java.util.Calendar.getInstance()
-                    val todayYear = today.get(java.util.Calendar.YEAR)
-                    val todayDay = today.get(java.util.Calendar.DAY_OF_YEAR)
-
-                    firestoreInternships.any { item ->
-                        val itemCal = java.util.Calendar.getInstance().apply {
-                            timeInMillis = item.createdAt
-                        }
-
-                        itemCal.get(java.util.Calendar.YEAR) == todayYear &&
-                                itemCal.get(java.util.Calendar.DAY_OF_YEAR) == todayDay
-                    }
-                }
-
                 // 5. Latest Postings
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -525,20 +553,73 @@ fun StudentHomeScreen(
                         color = Color(0xFF0F2C59)
                     )
 
-                    if (hasInternshipToday) {
+                    Row(
+                        modifier = Modifier.clickable {
+                            onViewAllRecommended()
+                        },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "Updated today",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF334155)
+                            text = "View All",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E3A8A)
+                        )
+
+                        Spacer(modifier = Modifier.width(2.dp))
+
+                        RightChevronIcon(
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFF1E3A8A)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                if (firestoreInternships.isNotEmpty()) {
-                    firestoreInternships.takeLast(2).forEach { item ->
+                val latestPostings = remember(firestoreInternships, appliedInternshipIds) {
+                    firestoreInternships
+                        .filter { item ->
+                            (item.status == "published" || item.status.isBlank()) &&
+                            item.id !in appliedInternshipIds
+                        }
+                        .take(2)
+                }
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Loading latest postings...",
+                            fontSize = 13.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                } else if (applicationsLoadError != null && latestPostings.isEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFEF2F2),
+                        border = BorderStroke(1.dp, Color(0xFFFECACA))
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = applicationsLoadError ?: "Failed to load application history.",
+                                fontSize = 13.sp,
+                                color = Color(0xFFB91C1C),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                } else if (latestPostings.isNotEmpty()) {
+                    latestPostings.forEach { item ->
                         PostingCard(
                             title = item.title,
                             isNew = true,
@@ -571,7 +652,7 @@ fun StudentHomeScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No latest internships available.",
+                                text = "All published internships have been applied for.",
                                 fontSize = 13.sp,
                                 color = Color(0xFF64748B),
                                 fontWeight = FontWeight.Medium

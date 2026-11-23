@@ -88,7 +88,11 @@ fun MyApplicationsScreen(
                 .addSnapshotListener { snapshot, error ->
                     isLoading = false
                     if (error != null) {
-                        errorMessage = error.localizedMessage ?: "Failed to retrieve applications from Firestore."
+                        if (myApplications.isEmpty()) {
+                            errorMessage = error.localizedMessage ?: "Failed to retrieve applications from Firestore."
+                        } else {
+                            errorMessage = null
+                        }
                     } else if (snapshot != null) {
                         myApplications = snapshot.documents.mapNotNull { doc ->
                             doc.toObject(StudentApplicationModel::class.java)?.copy(id = doc.id)
@@ -98,7 +102,9 @@ fun MyApplicationsScreen(
                 }
         } catch (e: Exception) {
             isLoading = false
-            errorMessage = e.localizedMessage ?: "An error occurred while loading applications."
+            if (myApplications.isEmpty()) {
+                errorMessage = e.localizedMessage ?: "An error occurred while loading applications."
+            }
         }
 
         onDispose {

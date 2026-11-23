@@ -196,6 +196,8 @@ object AuthRepository {
             AuthResult.Error("No registered account found with this email address. Please sign up first.")
         } catch (e: FirebaseAuthInvalidCredentialsException) {
             AuthResult.Error("Incorrect password or invalid credentials. Please try again.")
+        } catch (e: com.google.firebase.FirebaseNetworkException) {
+            AuthResult.Error("No internet connection. Please connect to the internet and try again.")
         } catch (e: FirebaseFirestoreException) {
             val reason = when (e.code) {
                 FirebaseFirestoreException.Code.PERMISSION_DENIED ->
@@ -204,6 +206,10 @@ object AuthRepository {
             }
             AuthResult.Error(reason)
         } catch (e: Exception) {
+            val message = e.localizedMessage?.lowercase() ?: ""
+            if (message.contains("network") || message.contains("internet") || message.contains("connect") || message.contains("host") || message.contains("socket") || message.contains("timeout")) {
+                return AuthResult.Error("No internet connection. Please connect to the internet and try again.")
+            }
             // Offline or prototype fallback for test accounts
             val clean = cleanEmail.lowercase()
             val displayName = when {

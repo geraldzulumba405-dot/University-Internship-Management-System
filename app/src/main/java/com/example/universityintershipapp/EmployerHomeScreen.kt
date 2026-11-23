@@ -71,10 +71,38 @@ fun EmployerHomeScreen(
     LaunchedEffect(currentEmployerUid) {
         val uid = currentEmployerUid ?: return@LaunchedEffect
 
+        // 1. Cache first load
+        try {
+            val userDocCache = db.collection("users")
+                .document(uid)
+                .get(com.google.firebase.firestore.Source.CACHE)
+                .await()
+
+            if (userDocCache.exists()) {
+                companyNameState =
+                    userDocCache.getString("companyName")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "Company account"
+
+                sectorState =
+                    userDocCache.getString("sector")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: ""
+            }
+
+            val cachedListings =
+                InternshipRepository.getEmployerInternships(uid, com.google.firebase.firestore.Source.CACHE)
+            if (cachedListings.isNotEmpty()) {
+                employerListings = cachedListings
+                activePostingsCount = cachedListings.size.toString()
+            }
+        } catch (_: Exception) {}
+
+        // 2. Server background refresh
         try {
             val userDoc = db.collection("users")
                 .document(uid)
-                .get()
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .await()
 
             if (userDoc.exists()) {
@@ -93,15 +121,15 @@ fun EmployerHomeScreen(
             // Never fall back to getInternships().
             // That method retrieves internships belonging to all employers.
             val ownedInternships =
-                InternshipRepository.getEmployerInternships(uid)
+                InternshipRepository.getEmployerInternships(uid, com.google.firebase.firestore.Source.SERVER)
 
-            employerListings = ownedInternships
-            activePostingsCount = ownedInternships.size.toString()
+            employerListings = ownedInternships.ifEmpty { employerListings }
+            activePostingsCount = employerListings.size.toString()
 
         } catch (e: Exception) {
             android.util.Log.e(
                 "EmployerHome",
-                "Failed to load employer information",
+                "Failed to refresh employer information from server",
                 e
             )
         }
@@ -305,7 +333,7 @@ fun EmployerHomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {

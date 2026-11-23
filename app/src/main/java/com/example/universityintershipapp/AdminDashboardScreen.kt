@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -161,7 +162,7 @@ fun AdminDashboardScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -287,54 +288,41 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (pendingEmployerList.isEmpty() && pendingInternshipList.isEmpty()) {
+                val combinedPending = remember(pendingEmployerList, pendingInternshipList) {
+                    val items = mutableListOf<Pair<String, Map<String, Any>>>()
+                    pendingEmployerList.forEach { items.add("employer" to it) }
+                    pendingInternshipList.forEach { items.add("internship" to it) }
+                    items.take(3)
+                }
+
+                if (combinedPending.isEmpty()) {
                     Text(
                         text = "No pending actions required.",
                         fontSize = 13.sp,
                         color = Color(0xFF64748B)
                     )
                 } else {
-                    if (pendingEmployerList.isNotEmpty()) {
-                        Text(
-                            text = "Pending Employers (${pendingEmployerList.size})",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF334155)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        pendingEmployerList.forEach { emp ->
-                            val compName = (emp["companyName"] as? String) ?: (emp["fullName"] as? String) ?: "Employer"
-                            val sector = (emp["sector"] as? String) ?: (emp["industry"] as? String) ?: (emp["location"] as? String) ?: "Awaiting review"
+                    combinedPending.forEach { (type, item) ->
+                        if (type == "employer") {
+                            val compName = (item["companyName"] as? String) ?: (item["fullName"] as? String) ?: "Employer"
+                            val sector = (item["sector"] as? String) ?: (item["industry"] as? String) ?: (item["location"] as? String) ?: "Awaiting review"
                             PendingActionCard(
                                 title = compName,
                                 subtitle = sector,
                                 statusText = "Awaiting employer review",
                                 onClick = onNavigateEmployers
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    if (pendingInternshipList.isNotEmpty()) {
-                        Text(
-                            text = "Pending Internships (${pendingInternshipList.size})",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF334155)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        pendingInternshipList.forEach { job ->
-                            val jobTitle = (job["title"] as? String) ?: "Internship"
-                            val company = (job["companyName"] as? String) ?: "Company"
+                        } else {
+                            val jobTitle = (item["title"] as? String) ?: "Internship"
+                            val company = (item["companyName"] as? String) ?: "Company"
                             PendingActionCard(
                                 title = jobTitle,
                                 subtitle = company,
                                 statusText = "Awaiting internship review",
                                 onClick = onNavigateInternships
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
 

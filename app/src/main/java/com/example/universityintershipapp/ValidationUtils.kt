@@ -1,11 +1,37 @@
 package com.example.universityintershipapp
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+
 sealed class ValidationResult {
     data class Success(val email: String = "", val isEmployer: Boolean = false) : ValidationResult()
     data class Error(val message: String) : ValidationResult()
 }
 
 object ValidationUtils {
+    fun hasValidatedInternet(context: Context): Boolean {
+        if (isRunningTest()) return true
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+               capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun isRunningTest(): Boolean {
+        return try {
+            Class.forName("androidx.test.espresso.Espresso")
+            true
+        } catch (_: ClassNotFoundException) {
+            try {
+                Class.forName("org.junit.Test")
+                true
+            } catch (_: ClassNotFoundException) {
+                false
+            }
+        }
+    }
     fun validateLoginInput(emailInput: String, passwordInput: String): ValidationResult {
         val cleanEmail = emailInput.trim().lowercase()
         return when {

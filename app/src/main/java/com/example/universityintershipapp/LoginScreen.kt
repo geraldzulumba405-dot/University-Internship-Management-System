@@ -23,12 +23,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,11 +71,16 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val rememberedAccount = remember { RememberedAccountManager.getRememberedAccount(context) }
+    var showRememberedCard by remember { mutableStateOf(rememberedAccount != null) }
+    var rememberThisAccount by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
@@ -90,13 +99,13 @@ fun LoginScreen(
                 text = "UniIntern",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F2C59)
+                color = MaterialTheme.colorScheme.primary
             )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
 
         // 3. Main Scrollable Form Body
         Column(
@@ -107,9 +116,9 @@ fun LoginScreen(
                 .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
             Text(
-                text = "Log in to your account to continue",
+                text = if (showRememberedCard && rememberedAccount != null) "Welcome back" else "Log in to your account to continue",
                 fontSize = 13.sp,
-                color = Color(0xFF171717),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 18.sp
             )
 
@@ -135,202 +144,361 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Email Field
-            Text(
-                text = "Email",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF000000)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = username,
-                onValueChange = {
-                    username = it
-                    errorMessage = null
-                },
-                placeholder = {
-                    Text(
-                        text = "Enter your username or email",
-                        color = Color(0xFF525252),
-                        fontSize = 13.sp
-                    )
-                },
-                leadingIcon = {
-                    PersonIcon(
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF525252)
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF0F2C59),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Password Field
-            Text(
-                text = "Password",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF000000)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = {
-                    password = it
-                    errorMessage = null
-                },
-                placeholder = {
-                    Text(
-                        text = "Enter your password",
-                        color = Color(0xFF525252),
-                        fontSize = 13.sp
-                    )
-                },
-                leadingIcon = {
-                    LockIcon(
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF525252)
-                    )
-                },
-                trailingIcon = {
-                    Box(
-                        modifier = Modifier.clickable { isPasswordVisible = !isPasswordVisible },
-                        contentAlignment = Alignment.Center
+            if (showRememberedCard && rememberedAccount != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        EyeIcon(
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                },
-                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF0F2C59),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Forgot password row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = "Forgot Password?",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B3B80),
-                    modifier = Modifier.clickable { onForgotPasswordClick() }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // Log In Button
-            Button(
-                onClick = {
-                    val valRes = ValidationUtils.validateLoginInput(username, password)
-                    if (valRes is ValidationResult.Error) {
-                        errorMessage = valRes.message
-                    } else if (!isLoading) {
-                        isLoading = true
-                        errorMessage = null
-                        scope.launch {
-                            val res = AuthRepository.loginUser(username, password)
-                            isLoading = false
-                            when (res) {
-                                is AuthResult.Success -> {
-                                    onLoginSubmit(res.email, password, res.role, res.fullName)
-                                }
-                                is AuthResult.Error -> {
-                                    errorMessage = res.message
-                                }
+                        Surface(
+                            modifier = Modifier.size(64.dp),
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = rememberedAccount.fullName.split(" ").mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("").uppercase().ifEmpty { "U" },
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = rememberedAccount.fullName,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = rememberedAccount.email,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = {
+                                if (!ValidationUtils.hasValidatedInternet(context)) {
+                                    errorMessage = "No internet connection. Please connect to the internet and try again."
+                                } else if (!isLoading) {
+                                    isLoading = true
+                                    errorMessage = null
+                                    scope.launch {
+                                        val res = AuthRepository.loginUser(rememberedAccount.email, rememberedAccount.passwordEncryptedOrStored)
+                                        isLoading = false
+                                        when (res) {
+                                            is AuthResult.Success -> {
+                                                onLoginSubmit(res.email, rememberedAccount.passwordEncryptedOrStored, res.role, res.fullName)
+                                            }
+                                            is AuthResult.Error -> {
+                                                errorMessage = res.message
+                                                RememberedAccountManager.clearRememberedAccount(context)
+                                                showRememberedCard = false
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF1B3B80),
+                                disabledContainerColor = Color(0xFF94A3B8)
+                            )
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    text = "Continue as ${rememberedAccount.fullName.split(" ").firstOrNull() ?: rememberedAccount.fullName}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        TextButton(
+                            onClick = { showRememberedCard = false }
+                        ) {
+                            Text(
+                                text = "Use another account",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF1B3B80)
+                            )
+                        }
+
+                        TextButton(
+                            onClick = {
+                                RememberedAccountManager.clearRememberedAccount(context)
+                                showRememberedCard = false
+                            }
+                        ) {
+                            Text(
+                                text = "Remove remembered account",
+                                fontSize = 13.sp,
+                                color = Color(0xFFDC2626)
+                            )
+                        }
                     }
-                },
-                enabled = !isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1B3B80),
-                    disabledContainerColor = Color(0xFF94A3B8)
+                }
+            } else {
+                // Email Field
+                Text(
+                    text = "Email",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        color = Color.White,
-                        strokeWidth = 2.5.dp
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = {
+                        username = it
+                        errorMessage = null
+                    },
+                    placeholder = {
+                        Text(
+                            text = "Enter your username or email",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                    },
+                    leadingIcon = {
+                        PersonIcon(
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Password Field
+                Text(
+                    text = "Password",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        errorMessage = null
+                    },
+                    placeholder = {
+                        Text(
+                            text = "Enter your password",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                    },
+                    leadingIcon = {
+                        LockIcon(
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = {
+                        Box(
+                            modifier = Modifier.clickable { isPasswordVisible = !isPasswordVisible },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            EyeIcon(
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Remember this account checkbox
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { rememberThisAccount = !rememberThisAccount },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = rememberThisAccount,
+                        onCheckedChange = { rememberThisAccount = it },
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Authenticating...",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        text = "Remember this account on this device",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Log In",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Forgot password row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "Forgot Password?",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { onForgotPasswordClick() }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Log In Button
+                Button(
+                    onClick = {
+                        val valRes = ValidationUtils.validateLoginInput(username, password)
+                        if (valRes is ValidationResult.Error) {
+                            errorMessage = valRes.message
+                        } else if (!ValidationUtils.hasValidatedInternet(context)) {
+                            errorMessage = "No internet connection. Please connect to the internet and try again."
+                        } else if (!isLoading) {
+                            isLoading = true
+                            errorMessage = null
+                            scope.launch {
+                                val res = AuthRepository.loginUser(username, password)
+                                isLoading = false
+                                when (res) {
+                                    is AuthResult.Success -> {
+                                        if (rememberThisAccount && res.role != "admin") {
+                                            RememberedAccountManager.saveRememberedAccount(
+                                                context,
+                                                username,
+                                                password,
+                                                res.fullName.ifBlank { res.email },
+                                                res.role,
+                                                res.uid
+                                            )
+                                        } else {
+                                            RememberedAccountManager.clearRememberedAccount(context)
+                                        }
+                                        onLoginSubmit(res.email, password, res.role, res.fullName)
+                                    }
+                                    is AuthResult.Error -> {
+                                        errorMessage = res.message
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1B3B80),
+                        disabledContainerColor = Color(0xFF94A3B8)
+                    )
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = Color.White,
+                            strokeWidth = 2.5.dp
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        RightArrowIcon(
-                            modifier = Modifier.size(18.dp),
-                            tint = Color.White
-                        )
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "Log In",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            RightArrowIcon(
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // Register Footer
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Don't have an account? ",
-                    fontSize = 13.sp,
-                    color = Color(0xFF171717)
-                )
-                Text(
-                    text = "Sign Up",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F2C59),
-                    modifier = Modifier.clickable { onRegisterClick() }
-                )
+                // Register Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Don't have an account? ",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Sign Up",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { onRegisterClick() }
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ package com.example.universityintershipapp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.tasks.await
 
 data class InternshipModel(
@@ -101,77 +102,125 @@ object InternshipRepository {
         }
     }
 
-    suspend fun getInternships(): List<InternshipModel> {
-        return try {
-            val snapshot = db.collection("internships")
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .get()
-                .await()
+    private suspend fun fetchCacheFirst(
+        primarySource: Source,
+        querySupplier: suspend (Source) -> com.google.firebase.firestore.QuerySnapshot,
+        fallback: suspend () -> List<InternshipModel> = { emptyList() }
+    ): List<InternshipModel> {
+        if (primarySource == Source.CACHE) {
+            return try {
+                val snapshot = querySupplier(Source.CACHE)
+                snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
 
+        if (primarySource == Source.SERVER) {
+            return try {
+                val snapshot = querySupplier(Source.SERVER)
+                snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
+                }
+            } catch (e: Exception) {
+                try {
+                    val cachedSnapshot = querySupplier(Source.CACHE)
+                    val cached = cachedSnapshot.documents.mapNotNull { doc ->
+                        doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
+                    }
+                    if (cached.isNotEmpty()) cached else fallback()
+                } catch (_: Exception) {
+                    fallback()
+                }
+            }
+        }
+
+        // Default (CACHE first, then SERVER with fallback to CACHE)
+        val cachedList = try {
+            val snapshot = querySupplier(Source.CACHE)
             snapshot.documents.mapNotNull { doc ->
                 doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {
             emptyList()
         }
-    }
 
-    suspend fun getPublishedInternships(): List<InternshipModel> {
         return try {
-            val snapshot = db.collection("internships")
-                .whereEqualTo("status", "published")
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .get()
-                .await()
-
-            snapshot.documents.mapNotNull { doc ->
+            val serverSnapshot = querySupplier(Source.SERVER)
+            serverSnapshot.documents.mapNotNull { doc ->
                 doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
             }
         } catch (e: Exception) {
-            try {
-                getInternships().filter { it.status == "published" }
-            } catch (e: Exception) {
-                emptyList()
+            if (cachedList.isNotEmpty()) {
+                cachedList
+            } else {
+                try {
+                    fallback()
+                } catch (_: Exception) {
+                    emptyList()
+                }
             }
         }
     }
 
-    suspend fun getEmployerInternships(uid: String): List<InternshipModel> {
+    suspend fun getInternships(source: Source = Source.DEFAULT): List<InternshipModel> {
+        return fetchCacheFirst(
+            primarySource = source,
+            querySupplier = { src ->
+                db.collection("internships")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get(src)
+                    .await()
+            }
+        )
+    }
+
+    suspend fun getPublishedInternships(source: Source = Source.DEFAULT): List<InternshipModel> {
+        return fetchCacheFirst(
+            primarySource = source,
+            querySupplier = { src ->
+                db.collection("internships")
+                    .whereEqualTo("status", "published")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get(src)
+                    .await()
+            },
+            fallback = {
+                getInternships(source).filter { it.status == "published" || it.status.isBlank() }
+            }
+        )
+    }
+
+    suspend fun getEmployerInternships(uid: String, source: Source = Source.DEFAULT): List<InternshipModel> {
         if (uid.isBlank()) return emptyList()
 
-        return try {
-            val snapshot = db.collection("internships")
-                .whereEqualTo("postedByUid", uid)
-                .get()
-                .await()
-
-            snapshot.documents.mapNotNull { doc ->
-                doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
-            }.sortedByDescending { it.createdAt }
-
-        } catch (e: Exception) {
-            emptyList()
-        }
+        return fetchCacheFirst(
+            primarySource = source,
+            querySupplier = { src ->
+                db.collection("internships")
+                    .whereEqualTo("postedByUid", uid)
+                    .get(src)
+                    .await()
+            }
+        ).sortedByDescending { it.createdAt }
     }
 
-    suspend fun getPendingInternships(): List<InternshipModel> {
-        return try {
-            val snapshot = db.collection("internships")
-                .whereEqualTo("status", "pending")
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .get()
-                .await()
-
-            snapshot.documents.mapNotNull { doc ->
-                doc.toObject(InternshipModel::class.java)?.copy(id = doc.id)
+    suspend fun getPendingInternships(source: Source = Source.DEFAULT): List<InternshipModel> {
+        return fetchCacheFirst(
+            primarySource = source,
+            querySupplier = { src ->
+                db.collection("internships")
+                    .whereEqualTo("status", "pending")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get(src)
+                    .await()
+            },
+            fallback = {
+                getInternships(source).filter { it.status == "pending" }
             }
-        } catch (e: Exception) {
-            try {
-                getInternships().filter { it.status == "pending" }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
+        )
     }
 
     suspend fun updateInternshipStatus(

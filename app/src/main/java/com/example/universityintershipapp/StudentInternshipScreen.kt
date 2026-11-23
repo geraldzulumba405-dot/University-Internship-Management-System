@@ -91,10 +91,8 @@ fun StudentInternshipScreen(
 
     // Retrieve published internships from Firestore.
     LaunchedEffect(Unit) {
-        try {
-            val remoteJobs = InternshipRepository.getPublishedInternships()
-
-            firestoreListings = remoteJobs.map { item ->
+        val mapJobs = { remoteJobs: List<InternshipModel> ->
+            remoteJobs.map { item ->
 
                 val workMode = item.workMode.ifEmpty {
                     if (item.location.contains("Remote", ignoreCase = true)) {
@@ -133,9 +131,22 @@ fun StudentInternshipScreen(
                     )
                 )
             }
+        }
 
-        } catch (e: Exception) {
-            firestoreListings = emptyList()
+        // 1. Cache first load
+        try {
+            val cachedJobs = InternshipRepository.getPublishedInternships(com.google.firebase.firestore.Source.CACHE)
+            if (cachedJobs.isNotEmpty()) {
+                firestoreListings = mapJobs(cachedJobs)
+            }
+        } catch (_: Exception) {}
+
+        // 2. Server background refresh
+        try {
+            val remoteJobs = InternshipRepository.getPublishedInternships(com.google.firebase.firestore.Source.SERVER)
+            firestoreListings = mapJobs(remoteJobs)
+        } catch (_: Exception) {
+            // Keep cached data if server fails
         }
     }
 

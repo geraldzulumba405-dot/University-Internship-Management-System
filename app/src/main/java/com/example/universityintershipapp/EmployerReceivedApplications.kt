@@ -102,77 +102,90 @@ fun EmployerReceivedApplications(
 
                 LaunchedEffect(Unit) {
                     isLoading = true
-                    try {
+                    val parseApps: suspend (com.google.firebase.firestore.Source) -> List<ApplicantData> = { source ->
                         val employerUid = FirebaseAuth.getInstance().currentUser?.uid
                         if (employerUid.isNullOrBlank()) {
-                            applicantsList = emptyList()
-                            isLoading = false
-                            return@LaunchedEffect
-                        }
+                            emptyList()
+                        } else {
+                            val employerListings = InternshipRepository.getEmployerInternships(employerUid, source)
+                            val ownedInternshipIds = employerListings.map { it.id }.filter { it.isNotBlank() }.toSet()
 
-                        val employerListings = InternshipRepository.getEmployerInternships(employerUid)
-                        val ownedInternshipIds = employerListings.map { it.id }.filter { it.isNotBlank() }.toSet()
+                            val appsSnapshot = FirebaseFirestore.getInstance().collection("applications")
+                                .get(source)
+                                .await()
+                            val fetched = mutableListOf<ApplicantData>()
+                            for (doc in appsSnapshot.documents) {
+                                val data = doc.data ?: continue
+                                val appEmployerUid = data["employerUid"] as? String ?: ""
+                                val internshipId = data["internshipId"] as? String ?: ""
 
-                        val appsSnapshot = FirebaseFirestore.getInstance().collection("applications")
-                            .get()
-                            .await()
-                        val fetched = mutableListOf<ApplicantData>()
-                        for (doc in appsSnapshot.documents) {
-                            val data = doc.data ?: continue
-                            val appEmployerUid = data["employerUid"] as? String ?: ""
-                            val internshipId = data["internshipId"] as? String ?: ""
+                                val matchesEmployer = appEmployerUid == employerUid ||
+                                                      (employerUid == "test-employer-uid" && (appEmployerUid == "employer-uid" || appEmployerUid.isBlank())) ||
+                                                      (appEmployerUid.isBlank() && employerUid == "employer-uid")
 
-                            val matchesEmployer = appEmployerUid == employerUid ||
-                                                  (employerUid == "test-employer-uid" && (appEmployerUid == "employer-uid" || appEmployerUid.isBlank())) ||
-                                                  (appEmployerUid.isBlank() && employerUid == "employer-uid")
+                                val matchesOwnedInternship = internshipId.isNotBlank() && internshipId in ownedInternshipIds
 
-                            val matchesOwnedInternship = internshipId.isNotBlank() && internshipId in ownedInternshipIds
+                                if (!matchesEmployer && !matchesOwnedInternship) continue
 
-                            if (!matchesEmployer && !matchesOwnedInternship) continue
-
-                            val title = data["internshipTitle"] as? String ?: "Software Engineering Intern"
-                            val statusRaw = data["status"] as? String ?: "Pending"
-                            val statusText = when {
-                                statusRaw.equals("Accepted", ignoreCase = true) || statusRaw.equals("Accept", ignoreCase = true) -> "Accepted"
-                                statusRaw.equals("Rejected", ignoreCase = true) || statusRaw.equals("Reject", ignoreCase = true) -> "Rejected"
-                                else -> "Pending"
-                            }
-                            val studentUid = data["studentUid"] as? String
-                            var name = "Not provided"
-                            var prog = "Not provided"
-                            if (!studentUid.isNullOrBlank()) {
-                                val userDoc = FirebaseFirestore.getInstance().collection("users").document(studentUid).get().await()
-                                if (userDoc.exists()) {
-                                    val n = userDoc.getString("fullName") ?: userDoc.getString("studentName")
-                                    if (!n.isNullOrBlank()) name = n
-                                    val p = userDoc.getString("programme") ?: userDoc.getString("fieldOfStudy")
-                                    if (!p.isNullOrBlank()) prog = p
+                                val title = data["internshipTitle"] as? String ?: "Software Engineering Intern"
+                                val statusRaw = data["status"] as? String ?: "Pending"
+                                val statusText = when {
+                                    statusRaw.equals("Accepted", ignoreCase = true) || statusRaw.equals("Accept", ignoreCase = true) -> "Accepted"
+                                    statusRaw.equals("Rejected", ignoreCase = true) || statusRaw.equals("Reject", ignoreCase = true) -> "Rejected"
+                                    else -> "Pending"
                                 }
-                            }
-                            fetched.add(
-                                ApplicantData(
-                                    id = doc.id,
-                                    name = name,
-                                    gpa = "Not provided",
-                                    programAndDate = prog,
-                                    statusText = statusText,
-                                    statusBg = when (statusText) {
-                                        "Accepted" -> Color(0xFFDCFCE7)
-                                        "Rejected" -> Color(0xFFFEE2E2)
-                                        else -> Color(0xFFEFF6FF)
-                                    },
-                                    statusTextCol = when (statusText) {
-                                        "Accepted" -> Color(0xFF166534)
-                                        "Rejected" -> Color(0xFF991B1B)
-                                        else -> Color(0xFF1E3A8A)
-                                    },
-                                    appliedInternship = title
+                                val studentUid = data["studentUid"] as? String
+                                var name = "Not provided"
+                                var prog = "Not provided"
+                                if (!studentUid.isNullOrBlank()) {
+                                    val userDoc = FirebaseFirestore.getInstance().collection("users").document(studentUid).get(source).await()
+                                    if (userDoc.exists()) {
+                                        val n = userDoc.getString("fullName") ?: userDoc.getString("studentName")
+                                        if (!n.isNullOrBlank()) name = n
+                                        val p = userDoc.getString("programme") ?: userDoc.getString("fieldOfStudy")
+                                        if (!p.isNullOrBlank()) prog = p
+                                    }
+                                }
+                                fetched.add(
+                                    ApplicantData(
+                                        id = doc.id,
+                                        name = name,
+                                        gpa = "Not provided",
+                                        programAndDate = prog,
+                                        statusText = statusText,
+                                        statusBg = when (statusText) {
+                                            "Accepted" -> Color(0xFFDCFCE7)
+                                            "Rejected" -> Color(0xFFFEE2E2)
+                                            else -> Color(0xFFEFF6FF)
+                                        },
+                                        statusTextCol = when (statusText) {
+                                            "Accepted" -> Color(0xFF166534)
+                                            "Rejected" -> Color(0xFF991B1B)
+                                            else -> Color(0xFF1E3A8A)
+                                        },
+                                        appliedInternship = title
+                                    )
                                 )
-                            )
+                            }
+                            fetched
                         }
-                        applicantsList = fetched
+                    }
+
+                    // 1. Cache first load
+                    try {
+                        val cachedApplicants = parseApps(com.google.firebase.firestore.Source.CACHE)
+                        if (cachedApplicants.isNotEmpty()) {
+                            applicantsList = cachedApplicants
+                            isLoading = false
+                        }
+                    } catch (_: Exception) {}
+
+                    // 2. Server background refresh
+                    try {
+                        val serverApplicants = parseApps(com.google.firebase.firestore.Source.SERVER)
+                        applicantsList = serverApplicants.ifEmpty { applicantsList }
                     } catch (_: Exception) {
-                        applicantsList = emptyList()
+                        // Keep cached data if server fails
                     } finally {
                         isLoading = false
                     }
